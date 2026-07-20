@@ -1,0 +1,74 @@
+name: scan
+
+on:
+  workflow_dispatch:        # the "Run workflow" button — this is the on-demand path
+    inputs:
+      new_only:
+        description: "Report only postings never seen before"
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 6 * * 1,4"   # Mon + Thu, 06:00 UTC
+
+permissions:
+  contents: write           # to commit the updated seen log
+  pages: write
+  id-token: write
+
+# Never let two scans race on data/seen.json.
+concurrency:
+  group: job-radar-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Scan boards
+        run: |
+          python jobradar.py scan \
+            --ci \
+            --out site/index.html \
+            --markdown "$RUNNER_TEMP/digest.md" \
+            ${{ inputs.new_only && '--new-only' || '' }}
+
+      - name: Job summary
+        if: always()
+        run: cat "$RUNNER_TEMP/digest.md" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Commit the seen log
+        run: |
+          # Bot identity on purpose: automated data churn shouldn't pad the
+          # contribution graph. Real commits keep your own noreply address.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/seen.json data/applied.json
+          if git diff --staged --quiet; then
+            echo "no new postings to record"
+          else
+            git commit -m "chore(data): record postings seen on $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: scan
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

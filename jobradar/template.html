@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>job-radar</title>
+<style>
+  :root {
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --panel-2: #f0f0f2;
+    --text: #17181c;
+    --muted: #6a6c75;
+    --faint: #9a9ca5;
+    --line: #dededf;
+    --accent: #0a5fd6;
+    --accent-soft: #e6efff;
+    --warn-bg: #fff5e2;
+    --warn-line: #e8c268;
+    --warn-text: #6b4a00;
+    --new-bg: #dcf5e5;
+    --new-text: #12673a;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101114;
+      --panel: #17181c;
+      --panel-2: #202127;
+      --text: #e8e9ec;
+      --muted: #9b9da6;
+      --faint: #6d6f79;
+      --line: #2b2d34;
+      --accent: #5c9dff;
+      --accent-soft: #1a2740;
+      --warn-bg: #2e2413;
+      --warn-line: #6b5320;
+      --warn-text: #f0cf8a;
+      --new-bg: #12331f;
+      --new-text: #6fd79b;
+      --shadow: none;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    -webkit-text-size-adjust: 100%;
+    padding-bottom: 96px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  a { color: var(--accent); }
+  code, .mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ---- header ---- */
+  header { border-bottom: 1px solid var(--line); background: var(--panel); }
+  h1 {
+    font-size: 19px; margin: 0; letter-spacing: -.01em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .head-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 14px 0 12px; }
+  .stats { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+  .stats b { color: var(--text); font-weight: 600; }
+
+  /* ---- errors ---- */
+  .errors {
+    background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-text);
+    border-radius: var(--radius); padding: 10px 12px; margin: 0 0 12px;
+    display: flex; gap: 12px; align-items: flex-start; font-size: 13px;
+  }
+  .errors ul { margin: 6px 0 0; padding-left: 18px; }
+  .errors li { margin: 2px 0; }
+  .errors .x {
+    margin-left: auto; background: none; border: 1px solid var(--warn-line);
+    color: inherit; border-radius: 6px; cursor: pointer; padding: 2px 8px; font-size: 12px; flex: none;
+  }
+
+  /* ---- filters ---- */
+  .filters {
+    position: sticky; top: 0; z-index: 5;
+    background: var(--bg); border-bottom: 1px solid var(--line);
+    padding: 10px 0; margin-bottom: 14px;
+  }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  #q {
+    flex: 1 1 220px; min-width: 0;
+    padding: 7px 10px; font: inherit; color: var(--text);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  }
+  #q::placeholder { color: var(--faint); }
+  .chip {
+    font: inherit; font-size: 12.5px; cursor: pointer;
+    padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--panel); color: var(--muted);
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip[aria-pressed="true"] {
+    background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600;
+  }
+  .chip .n { opacity: .65; margin-left: 5px; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sep { flex: 1 1 0; min-width: 0; }
+
+  /* ---- list ---- */
+  h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--muted); margin: 22px 0 8px; font-weight: 600;
+  }
+  h2 .n { color: var(--faint); font-weight: 400; }
+  .job {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 6px; box-shadow: var(--shadow);
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .job.applied { opacity: .45; }
+  .job.applied .title a { text-decoration: line-through; }
+  .job-main { flex: 1 1 auto; min-width: 0; }
+  .title { margin: 0 0 3px; font-size: 14px; font-weight: 600; line-height: 1.35; }
+  .title a { text-decoration: none; }
+  .title a:hover { text-decoration: underline; }
+  .meta { color: var(--muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+  .meta .co { color: var(--text); font-weight: 500; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag {
+    font-size: 11px; padding: 1px 6px; border-radius: 4px;
+    background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
+  }
+  .badge {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em;
+    padding: 2px 6px; border-radius: 4px; background: var(--new-bg); color: var(--new-text);
+    vertical-align: 2px; margin-right: 6px;
+  }
+  .job-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+  .score {
+    font-variant-numeric: tabular-nums; font-size: 12px; color: var(--faint);
+  }
+  .mark {
+    font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+    padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--muted);
+  }
+  .mark:hover { border-color: var(--accent); color: var(--accent); }
+  .mark[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .empty {
+    text-align: center; color: var(--muted); padding: 56px 16px;
+    border: 1px dashed var(--line); border-radius: var(--radius); margin-top: 16px;
+  }
+  .empty p { margin: 6px 0; }
+
+  /* ---- footer ---- */
+  .bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    background: var(--panel); border-top: 1px solid var(--line);
+    box-shadow: 0 -2px 10px rgba(0,0,0,.08);
+  }
+  .bar[hidden] { display: none; }
+  .bar-in { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0; }
+  .bar .lbl { font-size: 12px; color: var(--muted); flex: none; }
+  .bar code {
+    flex: 1 1 260px; min-width: 0; overflow-x: auto; white-space: nowrap;
+    background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 9px; display: block;
+  }
+  .bar button {
+    font: inherit; font-size: 12.5px; cursor: pointer; flex: none;
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--text);
+  }
+  .bar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .bar button:hover { border-color: var(--accent); }
+
+  @media (max-width: 560px) {
+    .wrap { padding: 0 12px; }
+    .job { flex-direction: column; gap: 8px; }
+    .job-side { flex-direction: row; align-items: center; width: 100%; }
+    .score { order: 2; margin-left: auto; }
+    .bar code { flex-basis: 100%; order: 3; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap head-row">
+    <h1>job-radar</h1>
+    <p class="stats" id="stats"></p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div id="errors"></div>
+</div>
+
+<div class="filters">
+  <div class="wrap">
+    <div class="filter-row">
+      <input id="q" type="search" placeholder="Search title, company, location…" aria-label="Search title, company or location">
+      <button class="chip" id="f-new" aria-pressed="false">New only</button>
+      <button class="chip" id="f-applied" aria-pressed="false">Hide applied</button>
+    </div>
+    <div class="chips" id="roles" style="margin-top:8px" role="group" aria-label="Filter by role"></div>
+  </div>
+</div>
+
+<main class="wrap" id="list"></main>
+
+<div class="bar" id="bar" hidden>
+  <div class="wrap bar-in">
+    <span class="lbl" id="bar-lbl"></span>
+    <code id="cmd"></code>
+    <button type="button" class="primary" id="copy">Copy</button>
+    <button type="button" id="clear">Clear</button>
+  </div>
+</div>
+
+<script>
+const JOBS = __JOBS_JSON__;
+const META = __META_JSON__;
+</script>
+
+<script>
+(function () {
+  "use strict";
+
+  var KEY = "job-radar-applied";
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  };
+
+  // --- local "applied" marks (ids not yet committed to the log) ---------------
+  var local = new Set();
+  try { (JSON.parse(localStorage.getItem(KEY)) || []).forEach(function (i) { local.add(i); }); } catch (e) {}
+  // Anything the run already reports as applied is committed — drop it locally.
+  JOBS.forEach(function (j) { if (j.applied) local.delete(j.id); });
+  var save = function () {
+    try { localStorage.setItem(KEY, JSON.stringify(Array.from(local))); } catch (e) {}
+  };
+  save();
+
+  var isApplied = function (j) { return !!j.applied || local.has(j.id); };
+
+  // --- state ------------------------------------------------------------------
+  var state = { q: "", roles: new Set(), newOnly: false, hideApplied: false };
+
+  var since = function (d) {
+    var t = Date.parse(d + "T00:00:00Z");
+    if (!d || isNaN(t)) return d || "";
+    var days = Math.floor((Date.now() - t) / 86400000);
+    if (days <= 0) return "today";
+    if (days === 1) return "1d ago";
+    if (days < 14) return days + "d ago";
+    if (days < 60) return Math.floor(days / 7) + "w ago";
+    return Math.floor(days / 30) + "mo ago";
+  };
+
+  // --- header -----------------------------------------------------------------
+  var when = (function () {
+    var t = Date.parse(META.generated_at);
+    return isNaN(t) ? String(META.generated_at || "") : new Date(t).toLocaleString();
+  })();
+  $("stats").innerHTML =
+    "<span><b>" + esc(META.total_scanned) + "</b> scanned</span>" +
+    "<span><b>" + esc(META.new_count) + "</b> new</span>" +
+    "<span><b>" + esc(META.companies) + "</b> companies</span>" +
+    "<span>" + esc(when) + "</span>";
+
+  var errs = META.errors || [];
+  if (errs.length) {
+    $("errors").innerHTML =
+      '<div class="errors"><div><strong>' + errs.length + " source" + (errs.length > 1 ? "s" : "") +
+      " failed — results are incomplete.</strong><ul>" +
+      errs.map(function (e) {
+        return typeof e === "string" ? "<li>" + esc(e) + "</li>"
+          : "<li><strong>" + esc(e.company) + "</strong>: " + esc(e.error) + "</li>";
+      }).join("") +
+      '</ul></div><button type="button" class="x">Dismiss</button></div>';
+    $("errors").querySelector(".x").onclick = function () { $("errors").innerHTML = ""; };
+  }
+
+  // --- role chips -------------------------------------------------------------
+  var counts = new Map();
+  JOBS.forEach(function (j) {
+    var k = j.role_label || j.role || "Other";
+    counts.set(k, (counts.get(k) || 0) + 1);
+  });
+  $("roles").innerHTML = Array.from(counts.keys()).sort().map(function (label) {
+    return '<button type="button" class="chip" aria-pressed="false" data-role="' + esc(label) + '">' +
+      esc(label) + '<span class="n">' + counts.get(label) + "</span></button>";
+  }).join("");
+  $("roles").hidden = counts.size === 0;
+
+  // --- render -----------------------------------------------------------------
+  function matches(j) {
+    if (state.newOnly && !j.is_new) return false;
+    if (state.hideApplied && isApplied(j)) return false;
+    if (state.roles.size && !state.roles.has(j.role_label || j.role || "Other")) return false;
+    if (state.q) {
+      var hay = (j.title + " " + j.company + " " + j.location).toLowerCase();
+      if (hay.indexOf(state.q) === -1) return false;
+    }
+    return true;
+  }
+
+  function card(j) {
+    var tags = (j.matched || []).map(function (m) { return '<span class="tag">' + esc(m) + "</span>"; }).join("");
+    var meta = [
+      '<span class="co">' + esc(j.company) + "</span>",
+      j.location ? "<span>" + esc(j.location) + "</span>" : "",
+      j.posted_at ? '<span title="' + esc(j.posted_at) + '">' + esc(since(j.posted_at)) + "</span>" : "",
+      j.source ? "<span>" + esc(j.source) + "</span>" : ""
+    ].filter(Boolean).join("");
+    var on = isApplied(j);
+    return '<article class="job' + (isApplied(j) ? " applied" : "") + '" data-id="' + esc(j.id) + '">' +
+      '<div class="job-main">' +
+        '<h3 class="title">' + (j.is_new ? '<span class="badge">NEW</span>' : "") +
+          '<a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.title) + "</a></h3>" +
+        '<div class="meta">' + meta + "</div>" +
+        (tags ? '<div class="tags">' + tags + "</div>" : "") +
+      "</div>" +
+      '<div class="job-side">' +
+        '<span class="score" title="match score">' + esc(j.score) + "</span>" +
+        '<button type="button" class="mark" aria-pressed="' + on + '"' +
+          (j.applied ? ' disabled title="already in the committed log"' : "") + ">Applied ✓</button>" +
+      "</div></article>";
+  }
+
+  function render() {
+    var rows = JOBS.filter(matches).sort(function (a, b) {
+      return (b.score - a.score) || String(b.posted_at || "").localeCompare(String(a.posted_at || ""));
+    });
+
+    if (!rows.length) {
+      $("list").innerHTML = '<div class="empty"><p><strong>' +
+        (JOBS.length ? "No jobs match these filters." : "No matching jobs in this run.") +
+        "</strong></p><p>" +
+        (JOBS.length ? "Try clearing the search or role filters." : "Run <code>./jobradar.py scan</code> to refresh.") +
+        "</p></div>";
+    } else {
+      var groups = new Map();
+      rows.forEach(function (j) {
+        var k = j.role_label || j.role || "Other";
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(j);
+      });
+      var html = "";
+      groups.forEach(function (list, label) {
+        html += "<section><h2>" + esc(label) + ' <span class="n">' + list.length + "</span></h2>" +
+          list.map(card).join("") + "</section>";
+      });
+      $("list").innerHTML = html;
+    }
+    bar();
+  }
+
+  function bar() {
+    var ids = Array.from(local);
+    $("bar").hidden = ids.length === 0;
+    if (!ids.length) return;
+    $("bar-lbl").textContent = ids.length + " marked locally —";
+    $("cmd").textContent = "./jobradar.py applied " + ids.join(" ");
+  }
+
+  // --- events -----------------------------------------------------------------
+  var toggle = function (btn, val) { btn.setAttribute("aria-pressed", String(val)); return val; };
+
+  $("q").addEventListener("input", function (e) { state.q = e.target.value.trim().toLowerCase(); render(); });
+  $("f-new").addEventListener("click", function () { state.newOnly = toggle(this, !state.newOnly); render(); });
+  $("f-applied").addEventListener("click", function () { state.hideApplied = toggle(this, !state.hideApplied); render(); });
+
+  $("roles").addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-role]");
+    if (!btn) return;
+    var r = btn.dataset.role;
+    toggle(btn, state.roles.has(r) ? (state.roles.delete(r), false) : (state.roles.add(r), true));
+    render();
+  });
+
+  $("list").addEventListener("click", function (e) {
+    var btn = e.target.closest(".mark");
+    if (!btn) return;
+    var id = btn.closest(".job").dataset.id;
+    if (local.has(id)) local.delete(id); else local.add(id);
+    save();
+    render();
+  });
+
+  $("clear").addEventListener("click", function () { local.clear(); save(); render(); });
+
+  $("copy").addEventListener("click", function () {
+    var text = $("cmd").textContent, btn = this;
+    var done = function (ok) {
+      btn.textContent = ok ? "Copied ✓" : "Copy failed";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1600);
+    };
+    // file:// and non-secure contexts often reject the async clipboard API.
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(legacyCopy(text)); });
+    } else {
+      done(legacyCopy(text));
+    }
+  });
+
+  function legacyCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

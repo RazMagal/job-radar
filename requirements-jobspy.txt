@@ -1,0 +1,4 @@
+# Optional: LinkedIn / Indeed / Glassdoor coverage for the `jobspy` source type.
+# These boards block datacenter IPs, so run that source locally, not in CI.
+-r requirements.txt
+python-jobspy>=1.1.80

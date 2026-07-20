@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.tmp
+
+# Generated each run; the published copy lives on the gh-pages deployment.
+site/
+data/latest.json

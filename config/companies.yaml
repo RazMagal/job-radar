@@ -1,0 +1,142 @@
+# Where to look. Each entry is one careers board.
+#
+# Every board below was verified live with `./jobradar.py check`. Re-run that after
+# any edit — board tokens change, and a stale token otherwise fails silently as
+# "zero jobs" rather than an error.
+#
+# How to find the token for a company:
+#   greenhouse       boards.greenhouse.io/<board>        -> board: <board>
+#   lever            jobs.lever.co/<board>               -> board: <board>
+#   ashby            jobs.ashbyhq.com/<board>            -> board: <board>
+#   smartrecruiters  jobs.smartrecruiters.com/<company>  -> board: <company>
+#   workday          <tenant>.<wd>.myworkdayjobs.com/<site>
+#                    e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
+#                    -> tenant: nvidia   wd: wd5   site: NVIDIAExternalCareerSite
+#
+# Workday error codes are a useful hint when adding one:
+#   404 = wrong tenant or wrong wd number
+#   422 = tenant is right, `site` is wrong (open the careers page and read it off the URL)
+#   401 = board requires auth; skip it
+#
+# `enabled: false` parks an entry. `ci: false` skips it in GitHub Actions.
+
+companies:
+  # ---- Chip / silicon -------------------------------------------------------
+  - name: NVIDIA
+    type: workday
+    tenant: nvidia
+    wd: wd5
+    site: NVIDIAExternalCareerSite
+    search_text: Israel
+
+  - name: Intel
+    type: workday
+    tenant: intel
+    wd: wd1
+    site: External
+    search_text: Israel
+
+  - name: Marvell
+    type: workday
+    tenant: marvell
+    wd: wd1
+    site: MarvellCareers
+    search_text: Israel
+
+  - name: Cadence
+    type: workday
+    tenant: cadence
+    wd: wd1
+    site: External_Careers
+    search_text: Israel
+
+  - name: Tenstorrent
+    type: greenhouse
+    board: tenstorrent
+
+  - name: SambaNova
+    type: greenhouse
+    board: sambanovasystems
+
+  - name: Cerebras
+    type: ashby
+    board: cerebras
+
+  - name: Etched
+    type: ashby
+    board: etched
+
+  # ---- AI labs --------------------------------------------------------------
+  - name: Anthropic
+    type: greenhouse
+    board: anthropic
+
+  - name: OpenAI
+    type: ashby
+    board: openai
+
+  # ---- Israeli tech (Linux / backend / AI roles) ----------------------------
+  - name: Via
+    type: greenhouse
+    board: via
+
+  - name: Similarweb
+    type: greenhouse
+    board: similarweb
+
+  - name: Riskified
+    type: greenhouse
+    board: riskified
+
+  - name: Lightricks
+    type: greenhouse
+    board: lightricks
+
+  # ---- To add: tenant confirmed, `site` still unknown -----------------------
+  # These Workday tenants exist but returned 422, meaning the `site` value below
+  # is wrong. Open the company's careers page, copy the path segment after the
+  # hostname into `site`, then flip `enabled: true` and run `check`.
+  - name: Qualcomm
+    type: workday
+    enabled: false
+    tenant: qualcomm
+    wd: wd5
+    site: FIXME
+    search_text: Israel
+
+  - name: Synopsys
+    type: workday
+    enabled: false
+    tenant: synopsys
+    wd: wd1
+    site: FIXME
+    search_text: Israel
+
+  - name: AMD
+    type: workday
+    enabled: false
+    tenant: amd
+    wd: wd1
+    site: FIXME
+    search_text: Israel
+
+  - name: Applied Materials
+    type: workday
+    enabled: false
+    tenant: appliedmaterials
+    wd: wd1
+    site: FIXME
+    search_text: Israel
+
+  # ---- Optional: LinkedIn/Indeed sweep via jobspy ---------------------------
+  # Needs `pip install -r requirements-jobspy.txt`. These boards block datacenter
+  # IPs, so it stays out of CI — run it locally.
+  - name: LinkedIn sweep (verification)
+    type: jobspy
+    enabled: false
+    ci: false
+    sites: [linkedin, indeed]
+    search_term: verification engineer
+    location: Israel
+    country: israel
+    results: 50

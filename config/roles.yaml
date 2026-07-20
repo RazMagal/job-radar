@@ -1,0 +1,127 @@
+# What counts as a job worth seeing.
+#
+# Matching runs on the job TITLE only (ATS list endpoints don't return descriptions).
+# Score = 3 per `match_any` hit + 1 per `boost` hit. A job needs `min_score` to show up,
+# so by default at least one primary keyword must appear in the title.
+
+settings:
+  # Keep only jobs whose location contains one of these. Substring, case-insensitive.
+  # Jobs with a blank location are kept (better a false positive than a missed match).
+  # Empty this list to go worldwide.
+  locations_any:
+    - israel
+    - tel aviv
+    - ramat gan
+    - herzliya
+    - haifa
+    - netanya
+    - raanana
+    - petah tikva
+    - yokneam
+    - jerusalem
+    - beer sheva
+    - remote
+
+  # Anything with these in the title is dropped regardless of role.
+  exclude_titles:
+    - intern
+    - internship
+    - student
+    - director
+    - vp
+    - vice president
+    - recruiter
+    - sales
+    - account executive
+
+  min_score: 3
+
+profiles:
+  - id: verification
+    label: Verification Engineer
+    match_any:
+      - verification engineer
+      - design verification
+      - dv engineer
+      - functional verification
+      - silicon validation
+      - post silicon
+      - verification
+    boost:
+      - uvm
+      - systemverilog
+      - asic
+      - soc
+      - formal
+      - rtl
+      - emulation
+      - senior
+      - staff
+    exclude:
+      - software verification
+      - test automation engineer
+      - qa
+
+  - id: chip-design
+    label: Chip Design / RTL
+    match_any:
+      - rtl design
+      - asic design
+      - digital design
+      - logic design
+      - physical design
+      - soc design
+      - fpga
+    boost:
+      - systemverilog
+      - verilog
+      - vhdl
+      - cpu
+      - gpu
+      - npu
+      - senior
+      - staff
+
+  - id: linux
+    label: Linux / Embedded
+    match_any:
+      - linux
+      - embedded software
+      - embedded engineer
+      - kernel
+      - device driver
+      - firmware
+      - systems engineer
+      - bsp
+    boost:
+      - c++
+      - rust
+      - kernel
+      - low level
+      - performance
+      - senior
+      - staff
+    exclude:
+      - sales engineer
+
+  - id: ai
+    label: AI / ML Research
+    match_any:
+      - machine learning
+      - deep learning
+      - ai researcher
+      - research scientist
+      - research engineer
+      - ml engineer
+      - mlops
+      - computer vision
+      - nlp
+    boost:
+      - pytorch
+      - llm
+      - inference
+      - training
+      - accelerator
+      - cuda
+      - senior
+      - staff
