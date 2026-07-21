@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, register, require
+from .base import SourceError, parse_json, register, require
 
 ENDPOINT = "https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs"
 VIEW = "https://{tenant}.{wd}.myworkdayjobs.com/en-US/{site}{path}"
@@ -56,12 +56,19 @@ def fetch(cfg: dict) -> list[Job]:
             headers={"Content-Type": "application/json"},
             timeout=TIMEOUT,
         )
+        # Verified empirically against a known-good board: a bogus site gives 404
+        # and a bogus tenant gives 422 — the opposite of what you'd guess.
         if r.status_code == 404:
+            raise SourceError(f"workday site {site!r} is wrong for tenant {tenant!r}")
+        if r.status_code == 422:
             raise SourceError(
-                f"workday site not found: {tenant}/{site} (check tenant, site and wd number)"
+                f"no public workday tenant {tenant!r} on {wd} "
+                "(wrong tenant name, wrong wd number, or the company isn't on Workday)"
             )
+        if r.status_code == 401:
+            raise SourceError(f"workday tenant {tenant!r} is an internal board (401)")
         r.raise_for_status()
-        payload = r.json()
+        payload = parse_json(r, f"workday/{tenant}/{site}")
         batch = payload.get("jobPostings", [])
         if not batch:
             break

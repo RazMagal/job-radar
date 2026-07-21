@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, register, require
+from .base import SourceError, parse_json, register, require
 
 API = "https://boards-api.greenhouse.io/v1/boards/{board}/jobs"
 
@@ -18,7 +18,7 @@ def fetch(cfg: dict) -> list[Job]:
     r.raise_for_status()
 
     jobs = []
-    for j in r.json().get("jobs", []):
+    for j in parse_json(r, f"greenhouse/{board}").get("jobs", []):
         jobs.append(
             Job(
                 company=cfg["name"],

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, register, require
+from .base import SourceError, parse_json, register, require
 
 API = "https://api.smartrecruiters.com/v1/companies/{company}/postings"
 PAGE = 100
@@ -25,7 +25,7 @@ def fetch(cfg: dict) -> list[Job]:
         if r.status_code == 404:
             raise SourceError(f"smartrecruiters company {company!r} does not exist")
         r.raise_for_status()
-        payload = r.json()
+        payload = parse_json(r, f"smartrecruiters/{company}")
         batch = payload.get("content", [])
         if not batch:
             break

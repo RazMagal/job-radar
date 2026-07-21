@@ -6,9 +6,13 @@ from datetime import datetime, timezone
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, register, require
+from .base import SourceError, parse_json, register, require
 
-API = "https://api.lever.co/v0/postings/{board}?mode=json"
+API = "https://api{region}.lever.co/v0/postings/{board}?mode=json"
+
+# Lever runs a separate EU data region. Boards hosted there 404 on the US endpoint,
+# which looks identical to a wrong token — set `region: eu` for those (e.g. Mobileye).
+REGIONS = {"": "", "us": "", "eu": ".eu"}
 
 
 def _date(ms) -> str:
@@ -23,13 +27,20 @@ def _date(ms) -> str:
 @register("lever")
 def fetch(cfg: dict) -> list[Job]:
     (board,) = require(cfg, "board")
-    r = SESSION.get(API.format(board=board), timeout=TIMEOUT)
+    region = str(cfg.get("region", "")).lower()
+    if region not in REGIONS:
+        raise SourceError(f"unknown lever region {region!r} (use one of: {sorted(REGIONS)})")
+
+    r = SESSION.get(API.format(region=REGIONS[region], board=board), timeout=TIMEOUT)
     if r.status_code == 404:
-        raise SourceError(f"lever board {board!r} does not exist")
+        raise SourceError(
+            f"lever board {board!r} does not exist in the "
+            f"{region or 'us'} region (try `region: eu`)"
+        )
     r.raise_for_status()
 
     jobs = []
-    for j in r.json():
+    for j in parse_json(r, f"lever/{board}"):
         cats = j.get("categories") or {}
         jobs.append(
             Job(

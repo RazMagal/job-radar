@@ -16,7 +16,9 @@ def _build_session() -> requests.Session:
     retry = Retry(
         total=3,
         backoff_factor=0.6,
-        status_forcelist=(429, 500, 502, 503, 504),
+        # 520-524 are Cloudflare's; Intel's Workday throws a transient 520 often
+        # enough that not retrying it costs real postings.
+        status_forcelist=(429, 500, 502, 503, 504, 520, 521, 522, 524),
         allowed_methods=frozenset({"GET", "POST"}),
         raise_on_status=False,
     )

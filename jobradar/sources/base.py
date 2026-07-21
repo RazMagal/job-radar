@@ -32,6 +32,19 @@ def get(name: str) -> Fetcher:
         ) from None
 
 
+def parse_json(response, label: str):
+    """A 200 carrying an HTML block/outage page otherwise surfaces as the useless
+    'Expecting value: line 1 column 1 (char 0)'."""
+    try:
+        return response.json()
+    except ValueError:
+        ctype = response.headers.get("content-type", "unknown")
+        raise SourceError(
+            f"{label}: expected JSON but got HTTP {response.status_code} ({ctype}) — "
+            "probably a block page or a transient outage; retry"
+        ) from None
+
+
 def require(cfg: dict, *keys: str) -> tuple:
     missing = [k for k in keys if not cfg.get(k)]
     if missing:
