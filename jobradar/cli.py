@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -92,9 +93,16 @@ def cmd_scan(args) -> int:
     if args.new_only:
         matches = new_jobs
 
-    payload = [
-        to_payload(j, is_new=store.is_new(j), applied=store.has_applied(j.id)) for j in matches
-    ]
+    if args.redact_applied:
+        # For the public page: applied jobs are dropped entirely rather than flagged.
+        # Publishing `applied: true` would leak where you applied just as surely as
+        # publishing the log itself.
+        matches = [j for j in matches if not store.has_applied(j.id)]
+        payload = [to_payload(j, is_new=store.is_new(j), applied=False) for j in matches]
+    else:
+        payload = [
+            to_payload(j, is_new=store.is_new(j), applied=store.has_applied(j.id)) for j in matches
+        ]
     meta = build_meta(len(raw_jobs), len(new_jobs), len(companies), errors)
 
     out = write_html(Path(args.out), payload, meta)
@@ -201,6 +209,64 @@ def cmd_log(args) -> int:
     return 0
 
 
+# -------------------------------------------------------------------------- vault
+
+
+def cmd_vault_init(args) -> int:
+    from . import vault
+
+    key_file = vault.key_path()
+    if os.environ.get(vault.KEY_ENV):
+        print(f"${vault.KEY_ENV} is already set in this shell; unset it to create a new key.")
+        return 1
+    if key_file.exists():
+        # Overwriting the key would make an existing encrypted log permanently unreadable.
+        print(f"A key already exists at {key_file} — refusing to overwrite it.")
+        print("Delete it yourself only if you are certain no encrypted log depends on it.")
+        return 1
+
+    store = Store(Path(args.data))
+    existing = dict(store.applied)
+
+    key = vault.generate_key()
+    vault.save_key(key)
+    store.key = key
+    store.applied = existing
+    store._save_applied()
+
+    if store.applied_path.exists():
+        store.applied_path.unlink()
+
+    print(f"key written to {key_file} (mode 0600)")
+    print(f"encrypted log at  {store.applied_enc_path}  ({len(existing)} entry/entries)")
+    if store.applied_path.exists() is False and existing:
+        print("plaintext data/applied.json removed")
+    print()
+    print("Back this key up somewhere safe — the log cannot be recovered without it.")
+    print("For CI: add it as a repository secret named JOBRADAR_KEY")
+    print(f"  gh secret set {vault.KEY_ENV} --repo <owner>/<repo> --body '{key.decode()}'")
+    return 0
+
+
+def cmd_vault_status(args) -> int:
+    from . import vault
+
+    store = Store(Path(args.data))
+    if os.environ.get(vault.KEY_ENV):
+        print(f"key:       from ${vault.KEY_ENV}")
+    elif vault.key_path().exists():
+        print(f"key:       {vault.key_path()}")
+    else:
+        print("key:       none — applied log is stored as plaintext")
+
+    print(f"encrypted: {store.applied_enc_path.exists()}  ({store.applied_enc_path})")
+    print(f"plaintext: {store.applied_path.exists()}  ({store.applied_path})")
+    print(f"entries:   {len(store.applied)}")
+    if store.applied_path.exists() and store.encrypted:
+        print("\nwarning: a stale plaintext log is still on disk — delete it.")
+    return 0
+
+
 # --------------------------------------------------------------------------- main
 
 
@@ -217,6 +283,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--print-new", action="store_true", help="print new matches to stdout")
     s.add_argument("--ci", action="store_true", help="skip boards marked `ci: false`")
     s.add_argument("--dry-run", action="store_true", help="don't update the seen log")
+    s.add_argument(
+        "--redact-applied",
+        action="store_true",
+        help="omit applied jobs from the report entirely (use for any public page)",
+    )
     s.set_defaults(func=cmd_scan)
 
     c = sub.add_parser("check", help="verify every configured board still resolves")
@@ -233,6 +304,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     lg = sub.add_parser("log", help="show everything you've applied to")
     lg.set_defaults(func=cmd_log)
+
+    v = sub.add_parser("vault", help="encrypt the applied log so a public repo can't leak it")
+    vsub = v.add_subparsers(dest="vault_command", required=True)
+    vi = vsub.add_parser("init", help="generate a key and encrypt the applied log")
+    vi.set_defaults(func=cmd_vault_init)
+    vs = vsub.add_parser("status", help="show key and encryption state")
+    vs.set_defaults(func=cmd_vault_status)
 
     return p
 

@@ -31,12 +31,19 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements-core.txt
 
       - name: Scan boards
+        env:
+          # Lets the run read the encrypted applied log so it can leave those jobs
+          # off the page. Unset is fine: without it the run simply doesn't know what
+          # you applied to, and --redact-applied still keeps applied state off the
+          # public page. See HOW_TO.md.
+          JOBRADAR_KEY: ${{ secrets.JOBRADAR_KEY }}
         run: |
           python jobradar.py scan \
             --ci \
+            --redact-applied \
             --out site/index.html \
             --markdown "$RUNNER_TEMP/digest.md" \
             ${{ inputs.new_only && '--new-only' || '' }}
@@ -51,7 +58,12 @@ jobs:
           # contribution graph. Real commits keep your own noreply address.
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/seen.json data/applied.json
+          # Never `git add data/applied.json` — the plaintext log is gitignored on
+          # purpose. Only the encrypted form is tracked, and CI only ever reads it.
+          # The .enc file is absent until `vault init` has been run, and a missing
+          # pathspec would fail the step.
+          git add data/seen.json
+          [ -f data/applied.json.enc ] && git add data/applied.json.enc || true
           if git diff --staged --quiet; then
             echo "no new postings to record"
           else

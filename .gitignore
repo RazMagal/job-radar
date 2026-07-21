@@ -4,6 +4,11 @@ __pycache__/
 venv/
 *.tmp
 
-# Generated each run; the published copy lives on the gh-pages deployment.
+# Generated each run; the published copy lives on the Pages deployment.
 site/
 data/latest.json
+
+# The applied-jobs log in the clear. Only data/applied.json.enc belongs in a public
+# repo — see `jobradar.py vault init` and HOW_TO.md. Committing this file would
+# publish exactly which companies you applied to and when.
+data/applied.json

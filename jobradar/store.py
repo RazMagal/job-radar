@@ -10,6 +10,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+from . import vault
 from .models import Job
 
 
@@ -19,8 +20,34 @@ class Store:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.seen_path = self.dir / "seen.json"
         self.applied_path = self.dir / "applied.json"
+        self.applied_enc_path = self.dir / "applied.json.enc"
+        self.key = vault.load_key()
         self.seen: dict[str, dict] = self._load(self.seen_path)
-        self.applied: dict[str, dict] = self._load(self.applied_path)
+        self.applied: dict[str, dict] = self._load_applied()
+
+    @property
+    def encrypted(self) -> bool:
+        return self.key is not None
+
+    def _load_applied(self) -> dict:
+        """With a key, the log lives only as ciphertext — no plaintext on disk, ever."""
+        if self.key:
+            if self.applied_enc_path.exists():
+                raw = vault.decrypt(self.applied_enc_path.read_bytes(), self.key)
+                return json.loads(raw.decode("utf-8")) or {}
+            # A key is set but nothing encrypted yet: adopt any existing plaintext,
+            # so turning encryption on doesn't silently lose the log.
+            return self._load(self.applied_path)
+        return self._load(self.applied_path)
+
+    def _save_applied(self) -> None:
+        if self.key:
+            blob = json.dumps(self.applied, indent=2, ensure_ascii=False, sort_keys=True)
+            tmp = self.applied_enc_path.with_suffix(".enc.tmp")
+            tmp.write_bytes(vault.encrypt(blob.encode("utf-8"), self.key))
+            tmp.replace(self.applied_enc_path)
+        else:
+            self._write(self.applied_path, self.applied)
 
     @staticmethod
     def _load(path: Path) -> dict:
@@ -70,14 +97,14 @@ class Store:
         if note:
             entry["note"] = note
         self.applied[job_id] = entry
-        self._write(self.applied_path, self.applied)
+        self._save_applied()
         return entry
 
     def unmark_applied(self, job_id: str) -> bool:
         if job_id not in self.applied:
             return False
         del self.applied[job_id]
-        self._write(self.applied_path, self.applied)
+        self._save_applied()
         return True
 
     def lookup(self, needle: str) -> tuple[str, dict] | None:
