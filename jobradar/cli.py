@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from . import sources
+from . import sources, vault
 from .matcher import load_roles, match_all
 from .models import Job
 from .report import build_meta, render_markdown, to_payload, write_html
@@ -103,6 +103,16 @@ def cmd_scan(args) -> int:
         payload = [
             to_payload(j, is_new=store.is_new(j), applied=store.has_applied(j.id)) for j in matches
         ]
+    board_failed = len(errors)
+    if store.locked:
+        # Surfaced on the page's warning strip so it's visible when viewing from a phone.
+        errors = errors + [
+            {
+                "company": "logs",
+                "error": "encrypted but no key here — 'new' badges and applied-hiding stay "
+                "off until the JOBRADAR_KEY secret is set",
+            }
+        ]
     meta = build_meta(len(raw_jobs), len(new_jobs), len(companies), errors)
 
     out = write_html(Path(args.out), payload, meta)
@@ -131,7 +141,8 @@ def cmd_scan(args) -> int:
             print(f"  [{j.score:>2}] {j.company}: {j.title} — {j.location}\n       {j.url}")
 
     # Every board failing means something systemic (network, blocked IP) — fail the run.
-    return 1 if errors and len(errors) == len(companies) else 0
+    # The locked-log warning isn't a board failure, so it's excluded from this count.
+    return 1 if board_failed and board_failed == len(companies) else 0
 
 
 # -------------------------------------------------------------------------- check
@@ -164,8 +175,20 @@ def cmd_check(args) -> int:
 # ------------------------------------------------------------------------ applied
 
 
+def _locked_bail(store) -> bool:
+    if store.locked:
+        print(
+            f"logs are encrypted but no key is available — set ${vault.KEY_ENV} or restore "
+            f"{vault.key_path()}",
+            file=sys.stderr,
+        )
+    return store.locked
+
+
 def cmd_applied(args) -> int:
     store = Store(Path(args.data))
+    if _locked_bail(store):
+        return 1
     rc = 0
     for needle in args.ids:
         found = store.lookup(needle)
@@ -181,6 +204,8 @@ def cmd_applied(args) -> int:
 
 def cmd_unapplied(args) -> int:
     store = Store(Path(args.data))
+    if _locked_bail(store):
+        return 1
     rc = 0
     for needle in args.ids:
         found = store.lookup(needle)
@@ -195,6 +220,8 @@ def cmd_unapplied(args) -> int:
 
 def cmd_log(args) -> int:
     store = Store(Path(args.data))
+    if _locked_bail(store):
+        return 1
     if not store.applied:
         print("Nothing applied yet.")
         return 0
@@ -226,24 +253,28 @@ def cmd_vault_init(args) -> int:
         return 1
 
     store = Store(Path(args.data))
-    existing = dict(store.applied)
+    if store.seen_enc_path.exists() or store.applied_enc_path.exists():
+        print("An encrypted log already exists in this data dir; refusing to re-init.")
+        return 1
+
+    seen, applied = dict(store.seen), dict(store.applied)
 
     key = vault.generate_key()
     vault.save_key(key)
     store.key = key
-    store.applied = existing
-    store._save_applied()
-
-    if store.applied_path.exists():
-        store.applied_path.unlink()
+    store.seen, store.applied = seen, applied
+    store._save_log(store.seen, store.seen_path, store.seen_enc_path)
+    store._save_log(store.applied, store.applied_path, store.applied_enc_path)
 
     print(f"key written to {key_file} (mode 0600)")
-    print(f"encrypted log at  {store.applied_enc_path}  ({len(existing)} entry/entries)")
-    if store.applied_path.exists() is False and existing:
-        print("plaintext data/applied.json removed")
+    print(f"encrypted: seen.json.enc ({len(seen)} seen), applied.json.enc ({len(applied)} applied)")
+    print("plaintext logs removed")
     print()
-    print("Back this key up somewhere safe — the log cannot be recovered without it.")
-    print("For CI: add it as a repository secret named JOBRADAR_KEY")
+    print("Back this key up somewhere safe — the logs cannot be recovered without it.")
+    print("A password manager entry is ideal: a 44-character string that never changes.")
+    print()
+    print("To run scans in the cloud / from your phone, the key must be a repo secret,")
+    print("or 'new' detection won't work there:")
     print(f"  gh secret set {vault.KEY_ENV} --repo <owner>/<repo> --body '{key.decode()}'")
     return 0
 
@@ -257,13 +288,27 @@ def cmd_vault_status(args) -> int:
     elif vault.key_path().exists():
         print(f"key:       {vault.key_path()}")
     else:
-        print("key:       none — applied log is stored as plaintext")
+        print("key:       none — logs are stored as plaintext")
 
-    print(f"encrypted: {store.applied_enc_path.exists()}  ({store.applied_enc_path})")
-    print(f"plaintext: {store.applied_path.exists()}  ({store.applied_path})")
-    print(f"entries:   {len(store.applied)}")
-    if store.applied_path.exists() and store.encrypted:
-        print("\nwarning: a stale plaintext log is still on disk — delete it.")
+    logs = (
+        ("seen", store.seen_path, store.seen_enc_path),
+        ("applied", store.applied_path, store.applied_enc_path),
+    )
+    for name, plain, enc in logs:
+        mode = "encrypted" if enc.exists() else ("plaintext" if plain.exists() else "absent")
+        print(f"{name + ':':10} {mode}")
+
+    if store.locked:
+        print(
+            "\nlocked: an encrypted log exists but no key is available here — reads return "
+            "empty and writes are skipped. Restore the key to unlock."
+        )
+    else:
+        print(f"entries:   {len(store.seen)} seen, {len(store.applied)} applied")
+
+    stale = [n for n, p, e in logs if e.exists() and p.exists()]
+    if stale:
+        print(f"\nwarning: stale plaintext beside ciphertext for {', '.join(stale)} — delete it.")
     return 0
 
 

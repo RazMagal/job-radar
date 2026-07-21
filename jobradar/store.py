@@ -1,7 +1,13 @@
 """Persistence for the two things worth remembering: what you've seen, what you applied to.
 
-Plain JSON, committed to the repo — so the history of your search is diffable and
-survives any hosting change.
+Both are JSON. When a vault key is set (see jobradar/vault.py) each log lives only as
+ciphertext — data/seen.json.enc and data/applied.json.enc — and the plaintext never
+touches disk. Without a key they're plain files. The repo is public, so the encrypted
+form is what belongs in git; see HOW_TO.md.
+
+There's a third state: an encrypted log exists but this process has no key (a CI run
+where the JOBRADAR_KEY secret isn't set). It can't be read and mustn't be overwritten,
+so the store runs "locked" — memory-less, and every write is a no-op — and callers warn.
 """
 
 from __future__ import annotations
@@ -19,38 +25,53 @@ class Store:
         self.dir = Path(data_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
         self.seen_path = self.dir / "seen.json"
+        self.seen_enc_path = self.dir / "seen.json.enc"
         self.applied_path = self.dir / "applied.json"
         self.applied_enc_path = self.dir / "applied.json.enc"
         self.key = vault.load_key()
-        self.seen: dict[str, dict] = self._load(self.seen_path)
-        self.applied: dict[str, dict] = self._load_applied()
+        self.locked = False  # set when an encrypted log exists but we have no key
+
+        self.seen = self._load_log(self.seen_path, self.seen_enc_path)
+        self.applied = self._load_log(self.applied_path, self.applied_enc_path)
 
     @property
     def encrypted(self) -> bool:
         return self.key is not None
 
-    def _load_applied(self) -> dict:
-        """With a key, the log lives only as ciphertext — no plaintext on disk, ever."""
-        if self.key:
-            if self.applied_enc_path.exists():
-                raw = vault.decrypt(self.applied_enc_path.read_bytes(), self.key)
-                return json.loads(raw.decode("utf-8")) or {}
-            # A key is set but nothing encrypted yet: adopt any existing plaintext,
-            # so turning encryption on doesn't silently lose the log.
-            return self._load(self.applied_path)
-        return self._load(self.applied_path)
+    # -- log I/O -------------------------------------------------------------
 
-    def _save_applied(self) -> None:
+    def _load_log(self, plain: Path, enc: Path) -> dict:
         if self.key:
-            blob = json.dumps(self.applied, indent=2, ensure_ascii=False, sort_keys=True)
-            tmp = self.applied_enc_path.with_suffix(".enc.tmp")
+            if enc.exists():
+                raw = vault.decrypt(enc.read_bytes(), self.key)
+                return json.loads(raw.decode("utf-8")) or {}
+            # Key set but nothing encrypted yet: adopt existing plaintext so turning
+            # encryption on doesn't silently lose the log.
+            return self._read_json(plain)
+        if enc.exists():
+            # Encrypted, but no key here. We can't read it and must not write plaintext
+            # beside it, so run memory-less rather than corrupt the ciphertext.
+            self.locked = True
+            return {}
+        return self._read_json(plain)
+
+    def _save_log(self, data: dict, plain: Path, enc: Path) -> None:
+        if self.locked:
+            return  # no key: leave the ciphertext untouched rather than clobber it
+        blob = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True)
+        if self.key:
+            tmp = enc.with_suffix(".enc.tmp")
             tmp.write_bytes(vault.encrypt(blob.encode("utf-8"), self.key))
-            tmp.replace(self.applied_enc_path)
+            tmp.replace(enc)  # atomic
+            if plain.exists():
+                plain.unlink()  # never leave plaintext beside the ciphertext
         else:
-            self._write(self.applied_path, self.applied)
+            tmp = plain.with_suffix(plain.suffix + ".tmp")
+            tmp.write_text(blob, encoding="utf-8")
+            tmp.replace(plain)  # atomic: a killed run can't leave a half-written log
 
     @staticmethod
-    def _load(path: Path) -> dict:
+    def _read_json(path: Path) -> dict:
         if not path.exists():
             return {}
         try:
@@ -59,17 +80,15 @@ class Store:
             raise SystemExit(f"{path} is corrupt ({exc}); fix or delete it and re-run") from None
         return data if isinstance(data, dict) else {}
 
-    @staticmethod
-    def _write(path: Path, data: dict) -> None:
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True), encoding="utf-8")
-        tmp.replace(path)  # atomic: a killed CI run can't leave a half-written log
+    # -- queries -------------------------------------------------------------
 
     def is_new(self, job: Job) -> bool:
         return job.id not in self.seen and job.id not in self.applied
 
     def has_applied(self, job_id: str) -> bool:
         return job_id in self.applied
+
+    # -- mutations -----------------------------------------------------------
 
     def record_seen(self, jobs: list[Job], today: str | None = None) -> None:
         stamp = today or date.today().isoformat()
@@ -85,7 +104,7 @@ class Store:
                     "title": j.title,
                     "url": j.url,
                 }
-        self._write(self.seen_path, self.seen)
+        self._save_log(self.seen, self.seen_path, self.seen_enc_path)
 
     def mark_applied(self, job_id: str, meta: dict, note: str = "") -> dict:
         entry = {
@@ -97,14 +116,14 @@ class Store:
         if note:
             entry["note"] = note
         self.applied[job_id] = entry
-        self._save_applied()
+        self._save_log(self.applied, self.applied_path, self.applied_enc_path)
         return entry
 
     def unmark_applied(self, job_id: str) -> bool:
         if job_id not in self.applied:
             return False
         del self.applied[job_id]
-        self._save_applied()
+        self._save_log(self.applied, self.applied_path, self.applied_enc_path)
         return True
 
     def lookup(self, needle: str) -> tuple[str, dict] | None:

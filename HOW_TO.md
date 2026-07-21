@@ -62,29 +62,41 @@ Once a job is in the applied log it never counts as "new" again, and the page di
 
 ---
 
-## Keeping the applied log private
+## Keeping your logs private
 
-This repo is public, so by default anyone could read `data/applied.json` and see exactly
-where you applied. Encryption fixes that:
+This repo is public, so by default anyone could read `data/applied.json` (where you
+applied) and `data/seen.json` (the full history of everything you've looked at, with
+dates). Encryption covers both:
 
 ```bash
 ./jobradar.py vault init
 ```
 
-That generates a key at `~/.config/job-radar/key` (mode 0600), encrypts your existing log
-to `data/applied.json.enc`, and deletes the plaintext. From then on the log only ever
-exists as ciphertext on disk — `applied`, `log`, and `unapplied` decrypt in memory.
+That generates a key at `~/.config/job-radar/key` (mode 0600), encrypts both logs to
+`data/seen.json.enc` and `data/applied.json.enc`, and deletes the plaintext. From then
+on they only ever exist as ciphertext on disk — every command decrypts in memory.
+
+Commit the `.enc` files and the plaintext deletions; those are what belong in the public
+repo. The job postings themselves are still on the public page (they're public info),
+but your history and applications are now unreadable.
 
 **Back that key up somewhere you won't lose it.** There is no recovery path; lose the key
-and the log is gone. A password manager entry is fine.
+and both logs are gone. A password-manager entry is ideal — it's a 44-character string
+that never changes.
 
-To let the cloud runs know what you've applied to:
+### The key is required for cloud / phone runs
+
+A scan run in GitHub Actions (which is what "run from my phone" means) has to read and
+write the encrypted logs, so it needs the key as a repository secret:
 
 ```bash
 gh secret set JOBRADAR_KEY --body "$(cat ~/.config/job-radar/key)"
 ```
 
-Check the state at any time:
+Without it, cloud runs go **locked**: they can't read the logs, so every job shows as new
+every time and applied-hiding is off. The page still builds and a warning strip says so —
+it's degraded, not broken. `jobradar.py applied/log/unapplied` refuse rather than risk
+clobbering the ciphertext. Set the secret and full behaviour returns. Check state with:
 
 ```bash
 ./jobradar.py vault status

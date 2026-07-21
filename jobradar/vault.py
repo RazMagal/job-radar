@@ -1,8 +1,9 @@
-"""Keeps the applied-jobs log private in a public repo.
+"""Keeps the seen and applied logs private in a public repo.
 
-Where you've applied is nobody's business, but the log is worth keeping in git for
-backup and history. So the plaintext never touches disk once a key exists: the log
-lives only as `data/applied.json.enc`, read into memory and written straight back.
+Where you've applied — and the accumulated history of everything you've looked at — is
+nobody's business, but both logs are worth keeping in git for backup and history. So the
+plaintext never touches disk once a key exists: each log lives only as its `.enc` file,
+read into memory and written straight back.
 
 Uses Fernet (AES-128-CBC + HMAC-SHA256) from `cryptography`, which is already a
 dependency, rather than `age`/`gpg` — no system package to install locally or in CI.
@@ -80,6 +81,6 @@ def decrypt(blob: bytes, key: bytes) -> bytes:
         return _fernet(key).decrypt(blob)
     except InvalidToken:
         raise VaultError(
-            "cannot decrypt the applied log — wrong key. The log is unreadable without "
-            "the key it was encrypted with; restore that key rather than deleting the file."
+            "cannot decrypt a log — wrong key. The log is unreadable without the key it "
+            "was encrypted with; restore that key rather than deleting the file."
         ) from None
