@@ -13,10 +13,12 @@
 #                    e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
 #                    -> tenant: nvidia   wd: wd5   site: NVIDIAExternalCareerSite
 #
-# Workday error codes are a useful hint when adding one:
-#   404 = wrong tenant or wrong wd number
-#   422 = tenant is right, `site` is wrong (open the careers page and read it off the URL)
-#   401 = board requires auth; skip it
+# Workday status codes (verified against a known-good board — they are the opposite
+# way round from what you'd expect):
+#   404 = tenant is right, `site` is wrong (read it off the careers page URL)
+#   422 = no public Workday tenant by that name on that wdN — wrong tenant, wrong wd
+#         number, or the company simply isn't on Workday
+#   401 = internal-only board; skip it
 #
 # `enabled: false` parks an entry. `ci: false` skips it in GitHub Actions.
 
@@ -49,6 +51,34 @@ companies:
     wd: wd1
     site: External_Careers
     search_text: Israel
+
+  - name: Applied Materials
+    type: workday
+    tenant: amat            # not `appliedmaterials`
+    wd: wd1
+    site: External
+    search_text: Israel
+
+  # Broadcom and Analog Devices deliberately have no `search_text`: their CXS search
+  # matches title/description text only, not location, so `search_text: Israel`
+  # silently returns zero. Pulled unfiltered and narrowed by the location filter
+  # in roles.yaml instead.
+  - name: Broadcom
+    type: workday
+    tenant: broadcom
+    wd: wd1
+    site: External_Career
+
+  - name: Analog Devices
+    type: workday
+    tenant: analogdevices
+    wd: wd1
+    site: External
+
+  - name: Mobileye
+    type: lever
+    board: mobileye
+    region: eu              # US endpoint 404s for this board
 
   - name: Tenstorrent
     type: greenhouse
@@ -92,51 +122,58 @@ companies:
     type: greenhouse
     board: lightricks
 
-  # ---- To add: tenant confirmed, `site` still unknown -----------------------
-  # These Workday tenants exist but returned 422, meaning the `site` value below
-  # is wrong. Open the company's careers page, copy the path segment after the
-  # hostname into `site`, then flip `enabled: true` and run `check`.
-  - name: Qualcomm
-    type: workday
-    enabled: false
-    tenant: qualcomm
-    wd: wd5
-    site: FIXME
-    search_text: Israel
+  # ---- Known-unreachable, documented so nobody re-tries them ----------------
+  # These are big Israeli chip employers that this tool cannot reach today. Each was
+  # probed across wd1/wd3/wd5 and every plausible tenant name; none has a public
+  # Workday, Greenhouse, Lever or Ashby board. Supporting them means writing a new
+  # adapter for the ATS named against each.
+  #
+  #   Qualcomm            Eightfold AI  (app.eightfold.ai/careers?domain=qualcomm.com)
+  #   Synopsys            Avature       (synopsys.avature.net)
+  #   AMD                 iCIMS         (careers-amd.icims.com)
+  #   Arm                 iCIMS         (experienced-arm.icims.com)
+  #   Texas Instruments   Oracle HCM    (careers.ti.com)
+  #   Hailo, NextSilicon, Ceva          Comeet — needs a per-company API token
+  #   Apple, Western Digital            Workday exists but returns 401 (internal)
+  #   Google, Microsoft, Amazon, Nokia  proprietary career sites
+  #
+  # Until then these are best covered by the LinkedIn/Indeed sweeps below, which do
+  # surface Qualcomm and Google Israel postings.
 
-  - name: Synopsys
-    type: workday
-    enabled: false
-    tenant: synopsys
-    wd: wd1
-    site: FIXME
-    search_text: Israel
-
-  - name: AMD
-    type: workday
-    enabled: false
-    tenant: amd
-    wd: wd1
-    site: FIXME
-    search_text: Israel
-
-  - name: Applied Materials
-    type: workday
-    enabled: false
-    tenant: appliedmaterials
-    wd: wd1
-    site: FIXME
-    search_text: Israel
-
-  # ---- Optional: LinkedIn/Indeed sweep via jobspy ---------------------------
-  # Needs `pip install -r requirements-jobspy.txt`. These boards block datacenter
-  # IPs, so it stays out of CI — run it locally.
-  - name: LinkedIn sweep (verification)
+  # ---- LinkedIn + Indeed sweeps via jobspy ----------------------------------
+  # Installed by default via requirements.txt. Verified working for Israel on
+  # 2026-07-20 from a residential IP: both boards returned real, on-topic Israeli
+  # postings. LinkedIn blocks datacenter IPs, so these are `ci: false` — run them
+  # locally. Glassdoor is unsupported (no Israel domain; it aborts the batch).
+  #
+  # One entry per search term: these are keyword searches, not full board dumps,
+  # so each role you care about needs its own sweep.
+  - name: LinkedIn/Indeed — verification
     type: jobspy
-    enabled: false
     ci: false
-    sites: [linkedin, indeed]
+    sites: [indeed, linkedin]
     search_term: verification engineer
     location: Israel
     country: israel
     results: 50
+    hours_old: 336
+
+  - name: LinkedIn/Indeed — chip design
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin]
+    search_term: ASIC RTL design engineer
+    location: Israel
+    country: israel
+    results: 50
+    hours_old: 336
+
+  - name: LinkedIn/Indeed — linux
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin]
+    search_term: linux embedded developer
+    location: Israel
+    country: israel
+    results: 50
+    hours_old: 336

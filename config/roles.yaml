@@ -20,7 +20,28 @@ settings:
     - yokneam
     - jerusalem
     - beer sheva
-    - remote
+  # `remote` was here and pulled in US roles: postings like
+  # "Remote-Friendly (Travel-Required) | San Francisco, CA" contain the word but
+  # are not remote-from-Israel. Add it back only if you want those too.
+  #
+  # Indeed returns Hebrew place names ("תל אביב -יפו, TA, IL") while the ATS APIs
+  # return English, so both spellings have to be here or the jobspy source's
+  # results get silently filtered out. (Matching on the "IL" suffix instead would
+  # also match Illinois, Milan, and anything else containing "il".)
+    - ישראל
+    - תל אביב
+    - חיפה
+    - ירושלים
+    - פתח תקווה
+    - הרצליה
+    - רעננה
+    - נתניה
+    - רמת גן
+    - באר שבע
+    - יקנעם
+    - כפר סבא
+    - מגדל העמק
+    - קיסריה
 
   # Anything with these in the title is dropped regardless of role.
   exclude_titles:
