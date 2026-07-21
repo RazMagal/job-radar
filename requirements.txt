@@ -1,2 +1,15 @@
-requests>=2.31
-PyYAML>=6.0
+-r requirements-core.txt
+
+# LinkedIn + Indeed sweeps. Not optional in practice: these are the only way to see
+# postings from companies with no reachable ATS (Qualcomm, Google, AMD, Synopsys,
+# Apple — see the bottom of config/companies.yaml).
+#
+# Pinned exactly, not floated. The package is effectively unmaintained (last publish
+# 2025-07) and scrapes sites that change under it, so a new release is more likely to
+# break the sweeps than to fix them. Bump this deliberately, after checking a scan
+# still returns rows — never as a drive-by upgrade.
+#
+# Costs ~120 MB (pandas + numpy + pydantic + tls-client). If you want the lean
+# install, use requirements-core.txt and the jobspy entries will fail loudly in
+# `check` rather than silently returning nothing.
+python-jobspy==1.1.82

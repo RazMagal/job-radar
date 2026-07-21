@@ -63,12 +63,14 @@ between a loud failure and a board quietly contributing zero jobs forever.
 Adding a company means finding its ATS: look at where its "Apply" button goes.
 The header comment in `companies.yaml` maps each ATS's public URL to the config it needs.
 
-## Optional: LinkedIn / Indeed
+## LinkedIn / Indeed
 
-`pip install -r requirements-jobspy.txt` enables the `jobspy` source type
-(via [JobSpy](https://github.com/speedyapply/JobSpy)) for boards without a public API.
-It's disabled by default and marked `ci: false`, because LinkedIn and Indeed block
-datacenter IPs — run it locally, not in Actions.
+The `jobspy` source type (via [JobSpy](https://github.com/speedyapply/JobSpy)) covers the
+companies with no reachable ATS — Qualcomm, Google, AMD, Synopsys, Apple all post there
+and nowhere this tool can otherwise read. Installed by default.
+
+These entries are `ci: false`: LinkedIn blocks datacenter IPs, so the sweeps run from your
+machine, not from Actions. CI installs `requirements-core.txt` accordingly.
 
 ## Layout
 
