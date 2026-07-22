@@ -4,7 +4,7 @@ Practical recipes. For what the project *is*, see [README.md](README.md).
 
 - [First-time setup](#first-time-setup)
 - [The daily loop](#the-daily-loop)
-- [Keeping the applied log private](#keeping-the-applied-log-private)
+- [How privacy works](#how-privacy-works-nothing-personal-leaves-your-machine)
 - [Adding a company](#adding-a-company)
 - [Tuning what matches](#tuning-what-matches)
 - [LinkedIn and Indeed](#linkedin-and-indeed)
@@ -37,86 +37,63 @@ One-time on GitHub, if you want the hosted page: **Settings → Pages → Source
 ## The daily loop
 
 ```bash
-./jobradar.py scan --print-new     # fetch everything, print what's new
+./jobradar.py scan --print         # fetch everything, print the matches
 ```
 
-Open `site/index.html`, or the hosted page. Then for each job you actually apply to:
+Open `site/index.html`, or the hosted page. Jobs new since your last visit on this device
+are badged; use **New only** and **Hide applied** to focus. Then for each job you apply to:
 
 ```bash
-./jobradar.py applied <id>                          # id from the page or --print-new
-./jobradar.py applied <full-job-url>                # URL works too
+./jobradar.py applied <id> --cv Verification         # id from the page or --print
+./jobradar.py applied <full-job-url>                 # URL works too
 ./jobradar.py applied <id> --note "referred by Y"
 ```
 
 The report page has an **Applied ✓** button on every card that assembles the exact
-command for you — click the ones you applied to, hit Copy, paste into a terminal.
-The committed JSON is the source of truth; the browser only stages the command, so
-nothing is lost if you clear site data.
+commands for you — click the ones you applied to (the page fills in the right `--cv`), hit
+Copy, and paste into a terminal to persist them to your local log.
 
 ```bash
 ./jobradar.py log                  # everything you've applied to, newest first
 ./jobradar.py unapplied <id>       # undo a misclick
 ```
 
-Once a job is in the applied log it never counts as "new" again, and the page dims it.
+Marking a job applied dims it on the page (browser-side) and records it in
+`data/applied.json` once you run the command.
 
 ---
 
-## Keeping your logs private
+## How privacy works (nothing personal leaves your machine)
 
-This repo is public, so by default anyone could read `data/applied.json` (where you
-applied) and `data/seen.json` (the full history of everything you've looked at, with
-dates). Encryption covers both:
+The repo is public, but nothing personal is ever committed or published — by design, not
+by encryption. Three things stay local, all gitignored:
 
-```bash
-./jobradar.py vault init
-```
+- **`data/applied.json`** — your applied log (what, when, which CV).
+- **`data/latest.json`** — the last scan's catalog, used to resolve job ids.
+- **`cv/`** — your actual CV files (only the README is tracked).
 
-That generates a key at `~/.config/job-radar/key` (mode 0600), encrypts both logs to
-`data/seen.json.enc` and `data/applied.json.enc`, and deletes the plaintext. From then
-on they only ever exist as ciphertext on disk — every command decrypts in memory.
+The cloud scan is **stateless**: it fetches public job postings, matches them, and deploys
+the page. It never sees your applied log or CVs, so there is nothing to leak.
 
-Commit the `.enc` files and the plaintext deletions; those are what belong in the public
-repo. The job postings themselves are still on the public page (they're public info),
-but your history and applications are now unreadable.
+### "New" and "hide applied" live in your browser
 
-**Back that key up somewhere you won't lose it.** There is no recovery path; lose the key
-and both logs are gone. A password-manager entry is ideal — it's a 44-character string
-that never changes.
+Because the cloud keeps no memory of you, the page itself remembers — in your browser's
+localStorage, per device:
 
-### The key is required for cloud / phone runs
+- **New** — the page records which jobs it showed last time and badges the newcomers, so
+  "new since last visit" works on your phone with no server-side history. It's per-device:
+  your phone and laptop track "new" separately (fine for a personal glance).
+- **Applied** — clicking **Applied ✓** marks a job in localStorage (dims it; **Hide
+  applied** filters it) and builds the `./jobradar.py applied <id> --cv <label>` command,
+  one line per marked job, to paste on your laptop so the durable log stays in sync.
 
-A scan run in GitHub Actions (which is what "run from my phone" means) has to read and
-write the encrypted logs, so it needs the key as a repository secret:
-
-```bash
-gh secret set JOBRADAR_KEY --body "$(cat ~/.config/job-radar/key)"
-```
-
-Without it, cloud runs go **locked**: they can't read the logs, so every job shows as new
-every time and applied-hiding is off. The page still builds and a warning strip says so —
-it's degraded, not broken. `jobradar.py applied/log/unapplied` refuse rather than risk
-clobbering the ciphertext. Set the secret and full behaviour returns. Check state with:
-
-```bash
-./jobradar.py vault status
-```
-
-### Why the page hides applied jobs rather than dimming them
-
-Encrypting the log isn't enough on its own. The published page embeds an `applied` flag
-per job, so a public site would leak the same information the encrypted file is hiding.
-The workflow therefore runs `scan --redact-applied`, which drops applied jobs from the
-published page entirely instead of marking them — from the outside they're
-indistinguishable from a closed posting.
-
-Locally, `scan` without that flag still dims them, which is what you want on your own
-machine.
+No key, no secret, nothing to back up. If you wipe browser storage the only loss is the
+per-device "new"/"applied" highlighting; the durable log on your laptop is untouched.
 
 ### Moving to a new machine
 
-Copy the key to `~/.config/job-radar/key` (or export `JOBRADAR_KEY`), clone the repo, and
-the log decrypts as-is.
+Copy `data/applied.json` and your `cv/` files across — they're not in git. That's it;
+there's no key or encrypted state to migrate.
 
 ---
 
@@ -186,12 +163,12 @@ supporting signal. Or add the offending words to a profile's `exclude`.
 **Missing jobs you know exist** — usually the location filter. Run:
 
 ```bash
-./jobradar.py scan --dry-run --print-new
+./jobradar.py scan --print
 ```
 
-`--dry-run` doesn't touch the seen log, so you can iterate on config without burning the
-"new" status of real postings. Temporarily emptying `locations_any` tells you fast whether
-location or keywords are to blame.
+The scan keeps no server-side state, so you can iterate on config freely and re-run as
+often as you like. Temporarily emptying `locations_any` tells you fast whether location or
+keywords are to blame.
 
 **A note on `locations_any`**: it's a plain substring match, which is why `remote` was
 removed — postings like `Remote-Friendly (Travel-Required) | San Francisco, CA` contain
@@ -230,9 +207,8 @@ Three things to know:
 
 **Actions → scan → Run workflow.** Also fires automatically Mon/Thu at 06:00 UTC.
 
-Each run scans, commits the updated seen log as `github-actions[bot]`, and redeploys the
-page. Bot identity is deliberate — automated data churn shouldn't inflate your
-contribution graph.
+Each run scans and redeploys the page. It's stateless — commits nothing, needs no secret,
+touches no personal data.
 
 Change the schedule in `.github/workflows/scan.yml`:
 
@@ -240,8 +216,8 @@ Change the schedule in `.github/workflows/scan.yml`:
 - cron: "0 6 * * 1,4"    # Mon + Thu 06:00 UTC
 ```
 
-The run's summary page shows a markdown digest of new matches, so you can triage from the
-Actions tab without opening the site.
+The run's summary page shows a markdown digest of the matches grouped by role, so you can
+triage from the Actions tab (or the GitHub mobile app) without opening the site.
 
 ---
 
@@ -253,15 +229,12 @@ re-derive it per [Adding a company](#adding-a-company).
 **`check` says EMPTY** — the board resolves but has zero postings. Usually genuine;
 occasionally means the company migrated ATS and left an empty shell behind.
 
-**A scan shows 0 new forever** — expected once you've seen everything. Confirm with
-`./jobradar.py scan --dry-run` and check the total. If the total dropped sharply, a board
-is failing.
+**The page shows everything as new (or nothing new)** — "new" is per-device browser state.
+A fresh browser or device has no history, so the first visit badges nothing and later
+visits badge what changed. Clearing site data resets it. Expected, not a bug.
 
-**Jobs you already applied to came back as new** — the posting's title or location changed,
-which changes its fingerprint. Re-mark it; the old entry is harmless.
-
-**`cannot decrypt the applied log — wrong key`** — `JOBRADAR_KEY` in your environment
-doesn't match the key the file was encrypted with. Fix the key; don't delete the file.
+**Jobs you applied to aren't dimmed here** — applied state is per-device too. If you marked
+them on another device, re-mark here (or check `./jobradar.py log` for the durable record).
 
 **The whole run fails in CI but works locally** — most likely an IP block. Anything
 `ci: false` is excluded from cloud runs for exactly this reason.

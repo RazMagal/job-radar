@@ -53,22 +53,26 @@ Two options, worth trying in this order.
 Keep whichever choice explainable — a bare "use CV #2" with no reason is not actionable
 when you're deciding what to actually send.
 
-### Watch out: CVs are personal data
+### CVs are personal data (handled)
 
-A CV has your address, phone number and full work history. **It must not land in a public
-repo.** The applied-log problem, again — and the fix already exists:
+A CV has your address, phone number and full work history, so it must not land in a public
+repo. The `cv/` folder is gitignored (only its README is tracked) and only the CV *label*
+ever reaches the page — never the filename or content. The tool names which CV to send; it
+never stores, reads, or ships the file.
 
-- store CVs under `cv/`, gitignored, encrypted via the existing `jobradar vault`
-  machinery (`jobradar/vault.py` is agnostic about what it encrypts),
-- never let a CV filename or content reach `site/index.html`; the page is world-readable.
-  A neutral label like "CV: verification" is fine, the file itself is not.
+### Status: Stage 1 shipped
+
+Done: `cv list`, the role→CV mapping in `config/cvs.yaml`, the "send: &lt;label&gt;" chip on
+the report and digest, and `applied <id> --cv <label>` recording which CV you sent. The
+remaining work is Stage 2 — reading the job description to pick per-job for crossover
+roles.
 
 ### Also worth having
 
-- `jobradar.py cv list` / `cv add <path> --label verification`
-- CV recommendation as a column in the report and in the markdown digest
-- Track *which* CV you sent in the applied log, so you can tell later which version
-  actually got replies — that's the data that makes the whole feature worth having.
+- `jobradar.py cv add <path> --label verification` (right now you drop files in `cv/` and
+  edit `config/cvs.yaml` by hand).
+- Once you have replies, correlate them with the `cv` field in the applied log to see
+  which CV actually lands interviews — the payoff that makes the whole feature worth it.
 
 ---
 

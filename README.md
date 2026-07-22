@@ -15,10 +15,15 @@ roles under a pile of unrelated engineering titles.
    someone reskins a website.
 2. **Match** — scores each title against the role profiles in `config/roles.yaml`
    and filters by location.
-3. **Remember** — anything already in `data/seen.json` isn't "new"; anything in
-   `data/applied.json` is marked as applied and can be hidden. Both are committed
-   to the repo, so the history of the search is diffable and survives a host change.
+3. **Recommend a CV** — tags each match with the CV to send for its role
+   (`config/cvs.yaml`). The label shows on the card; the file itself never leaves
+   your machine.
 4. **Publish** — writes a self-contained `site/index.html`, deployed to GitHub Pages.
+   The scan is **stateless**: it renders the current matches and nothing personal.
+5. **Remember, privately** — "new since last visit" and "hide the ones I applied to"
+   are tracked in your **browser**, per device. The `applied` CLI log
+   (`data/applied.json`) is a local, gitignored record — what you applied to, when,
+   which CV. Nothing personal is ever committed or published.
 
 ## Usage
 
@@ -27,22 +32,23 @@ pip install -r requirements.txt
 
 ./jobradar.py check           # verify every configured board still resolves
 ./jobradar.py scan            # fetch, match, write site/index.html
-./jobradar.py scan --print-new --new-only
+./jobradar.py scan --print    # ...and print the matches
 
-./jobradar.py applied a1b2c3d4e5f6      # mark as applied (id or full job URL)
+./jobradar.py cv list                   # which CV maps to which role; are the files there
+./jobradar.py applied a1b2c3d4e5f6 --cv Verification   # mark applied (id or job URL)
 ./jobradar.py applied <url> --note "referred by X"
 ./jobradar.py log                        # everything applied, newest first
 ./jobradar.py unapplied a1b2c3d4e5f6     # undo
 ```
 
 The report page has an "Applied ✓" button on each card that builds the
-`./jobradar.py applied ...` command for you to paste — the committed JSON stays the
-source of truth, so nothing depends on browser storage.
+`./jobradar.py applied ...` command (with the right `--cv`) for you to paste, so your
+local log stays in sync with what you mark on the page.
 
 ## Running it on demand
 
 GitHub Actions, free: **Actions → scan → Run workflow**. It also runs Mon/Thu at 06:00 UTC.
-Each run commits the updated seen log and redeploys the Pages site.
+The run is stateless — it just deploys the page; it commits nothing.
 
 First-time setup, once: **Settings → Pages → Source: GitHub Actions**.
 
@@ -78,11 +84,13 @@ machine, not from Actions. CI installs `requirements-core.txt` accordingly.
 jobradar/
   sources/        one adapter per ATS, self-registering
   matcher.py      role scoring + location filter
-  store.py        seen / applied logs (atomic JSON writes)
+  cvs.py          role -> CV mapping
+  store.py        the local applied log (id -> metadata via the last scan)
   report.py       fills template.html
   cli.py
-config/           roles.yaml, companies.yaml
-data/             seen.json, applied.json  (committed)
+config/           roles.yaml, companies.yaml, cvs.yaml
+cv/               your CVs (gitignored; only the README is tracked)
+data/             applied.json + latest.json — local only, gitignored
 ```
 
 Adding an ATS is one file in `jobradar/sources/` with a `@register("name")` decorator
