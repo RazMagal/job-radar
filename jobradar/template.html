@@ -140,6 +140,13 @@
     font-size: 11px; padding: 1px 6px; border-radius: 4px;
     background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
   }
+  /* which CV to send — an action pill, distinct from matched-keyword .tag */
+  .cv {
+    font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent);
+    white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+  .cv .cv-k { font-weight: 500; opacity: .7; }
   .badge {
     font-size: 10px; font-weight: 700; letter-spacing: .06em;
     padding: 2px 6px; border-radius: 4px; background: var(--new-bg); color: var(--new-text);
@@ -172,7 +179,7 @@
   .bar-in { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0; }
   .bar .lbl { font-size: 12px; color: var(--muted); flex: none; }
   .bar code {
-    flex: 1 1 260px; min-width: 0; overflow-x: auto; white-space: nowrap;
+    flex: 1 1 260px; min-width: 0; overflow-x: auto; white-space: pre;
     background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
     padding: 6px 9px; display: block;
   }
@@ -238,6 +245,7 @@ const META = __META_JSON__;
   "use strict";
 
   var KEY = "job-radar-applied";
+  var SEEN = "job-radar-seen";
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -245,17 +253,47 @@ const META = __META_JSON__;
     });
   };
 
-  // --- local "applied" marks (ids not yet committed to the log) ---------------
+  // --- job lookup by id -------------------------------------------------------
+  var byId = new Map();
+  JOBS.forEach(function (j) { byId.set(j.id, j); });
+
+  // --- local "applied" marks (ids the viewer marked on THIS device) -----------
   var local = new Set();
   try { (JSON.parse(localStorage.getItem(KEY)) || []).forEach(function (i) { local.add(i); }); } catch (e) {}
-  // Anything the run already reports as applied is committed — drop it locally.
-  JOBS.forEach(function (j) { if (j.applied) local.delete(j.id); });
   var save = function () {
     try { localStorage.setItem(KEY, JSON.stringify(Array.from(local))); } catch (e) {}
   };
-  save();
 
-  var isApplied = function (j) { return !!j.applied || local.has(j.id); };
+  var isApplied = function (j) { return local.has(j.id); };
+
+  // --- client-side "new" detection --------------------------------------------
+  // Genuinely-new postings (vs. the previously-seen scan) get badged, tracked
+  // in localStorage. Degrades to "nothing new" if storage is unavailable.
+  var newIds = new Set();
+  (function () {
+    var G = META.generated_at;
+    var C = JOBS.map(function (j) { return j.id; });
+    var s = null;
+    try { s = JSON.parse(localStorage.getItem(SEEN) || "null"); } catch (e) { s = null; }
+    var store = function (obj) {
+      try { localStorage.setItem(SEEN, JSON.stringify(obj)); } catch (e) {}
+    };
+    if (!s) {
+      // First ever visit: nothing is new; seed the store.
+      store({ curGen: G, curIds: C, prevIds: C });
+    } else if (s.curGen === G) {
+      // Re-viewing the same scan: NEW = C minus prevIds; leave storage as-is.
+      var prev = new Set(s.prevIds || []);
+      C.forEach(function (id) { if (!prev.has(id)) newIds.add(id); });
+    } else {
+      // A newer scan than last recorded: NEW = C minus curIds; roll storage.
+      var cur = new Set(s.curIds || []);
+      C.forEach(function (id) { if (!cur.has(id)) newIds.add(id); });
+      store({ curGen: G, curIds: C, prevIds: s.curIds || [] });
+    }
+  })();
+
+  var isNew = function (j) { return newIds.has(j.id); };
 
   // --- state ------------------------------------------------------------------
   var state = { q: "", roles: new Set(), newOnly: false, hideApplied: false };
@@ -278,7 +316,7 @@ const META = __META_JSON__;
   })();
   $("stats").innerHTML =
     "<span><b>" + esc(META.total_scanned) + "</b> scanned</span>" +
-    "<span><b>" + esc(META.new_count) + "</b> new</span>" +
+    "<span><b>" + esc(newIds.size) + "</b> new</span>" +
     "<span><b>" + esc(META.companies) + "</b> companies</span>" +
     "<span>" + esc(when) + "</span>";
 
@@ -309,7 +347,7 @@ const META = __META_JSON__;
 
   // --- render -----------------------------------------------------------------
   function matches(j) {
-    if (state.newOnly && !j.is_new) return false;
+    if (state.newOnly && !isNew(j)) return false;
     if (state.hideApplied && isApplied(j)) return false;
     if (state.roles.size && !state.roles.has(j.role_label || j.role || "Other")) return false;
     if (state.q) {
@@ -321,6 +359,7 @@ const META = __META_JSON__;
 
   function card(j) {
     var tags = (j.matched || []).map(function (m) { return '<span class="tag">' + esc(m) + "</span>"; }).join("");
+    var cv = j.cv ? '<span class="cv" title="CV to send for this role"><span class="cv-k">send:</span> ' + esc(j.cv) + "</span>" : "";
     var meta = [
       '<span class="co">' + esc(j.company) + "</span>",
       j.location ? "<span>" + esc(j.location) + "</span>" : "",
@@ -330,15 +369,14 @@ const META = __META_JSON__;
     var on = isApplied(j);
     return '<article class="job' + (isApplied(j) ? " applied" : "") + '" data-id="' + esc(j.id) + '">' +
       '<div class="job-main">' +
-        '<h3 class="title">' + (j.is_new ? '<span class="badge">NEW</span>' : "") +
+        '<h3 class="title">' + (isNew(j) ? '<span class="badge">NEW</span>' : "") +
           '<a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.title) + "</a></h3>" +
         '<div class="meta">' + meta + "</div>" +
-        (tags ? '<div class="tags">' + tags + "</div>" : "") +
+        (cv || tags ? '<div class="tags">' + cv + tags + "</div>" : "") +
       "</div>" +
       '<div class="job-side">' +
         '<span class="score" title="match score">' + esc(j.score) + "</span>" +
-        '<button type="button" class="mark" aria-pressed="' + on + '"' +
-          (j.applied ? ' disabled title="already in the committed log"' : "") + ">Applied ✓</button>" +
+        '<button type="button" class="mark" aria-pressed="' + on + '">Applied ✓</button>' +
       "</div></article>";
   }
 
@@ -375,7 +413,12 @@ const META = __META_JSON__;
     $("bar").hidden = ids.length === 0;
     if (!ids.length) return;
     $("bar-lbl").textContent = ids.length + " marked locally —";
-    $("cmd").textContent = "./jobradar.py applied " + ids.join(" ");
+    $("cmd").textContent = ids.map(function (id) {
+      var j = byId.get(id);
+      var line = "./jobradar.py applied " + id;
+      if (j && j.cv) line += ' --cv "' + j.cv + '"';
+      return line;
+    }).join("\n");
   }
 
   // --- events -----------------------------------------------------------------

@@ -1,9 +1,7 @@
-# Minimal set: the ATS adapters, matching, and the encrypted applied log.
-# CI installs only this — the LinkedIn/Indeed sweeps are `ci: false` (those boards
-# block datacenter IPs), so pulling their ~120 MB of pandas/numpy into every
-# Actions run would buy nothing.
+# Minimal set: the ATS adapters, matching, and the report. CI installs only this — the
+# LinkedIn/Indeed sweeps are `ci: false` (those boards block datacenter IPs), so pulling
+# their ~120 MB of pandas/numpy into every Actions run would buy nothing.
 #
 # For normal use install requirements.txt instead, which includes this file.
 requests>=2.31
 PyYAML>=6.0
-cryptography>=41.0    # encrypts the applied-jobs log; see `jobradar.py vault init`

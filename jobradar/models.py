@@ -31,6 +31,9 @@ class Job:
     score: int = 0
     matched: list[str] = field(default_factory=list)
 
+    # Filled in from the CV registry: which CV to send for this job (label only).
+    cv_label: str = ""
+
     @property
     def id(self) -> str:
         """Stable fingerprint. Deliberately excludes the URL and the ATS's own job id,

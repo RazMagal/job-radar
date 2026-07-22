@@ -6,9 +6,14 @@ venv/
 
 # Generated each run; the published copy lives on the Pages deployment.
 site/
-data/latest.json
 
-# The applied-jobs log in the clear. Only data/applied.json.enc belongs in a public
-# repo — see `jobradar.py vault init` and HOW_TO.md. Committing this file would
-# publish exactly which companies you applied to and when.
-data/applied.json
+# Runtime + personal data, all local. The applied log (data/applied.json) and the last
+# scan's catalog (data/latest.json) live only on your machine — the cloud scan is
+# stateless and the page tracks 'new'/'applied' in your browser, so nothing personal is
+# ever committed. See HOW_TO.md.
+data/
+
+# Personal CVs. The tool names which CV to send, it doesn't host the file, so the PDFs
+# never need to be in the repo. Only the mapping in config/cvs.yaml is tracked.
+cv/*
+!cv/README.md

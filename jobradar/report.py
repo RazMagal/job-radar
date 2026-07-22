@@ -29,12 +29,12 @@ def write_html(path: Path, jobs: list[dict], meta: dict) -> Path:
     return path
 
 
-def render_markdown(jobs: list[dict], meta: dict, limit: int = 40) -> str:
+def render_markdown(jobs: list[dict], meta: dict, limit: int = 25) -> str:
     lines = [
         "## job-radar",
         "",
-        f"{meta['new_count']} new match(es) out of {len(jobs)} shown "
-        f"({meta['total_scanned']} scanned across {meta['companies']} boards).",
+        f"{len(jobs)} match(es) across {meta['companies']} boards "
+        f"({meta['total_scanned']} postings scanned).",
         "",
     ]
 
@@ -43,20 +43,21 @@ def render_markdown(jobs: list[dict], meta: dict, limit: int = 40) -> str:
         lines += [f"- **{e['company']}** — {e['error']}" for e in meta["errors"]]
         lines += [""]
 
-    new_jobs = [j for j in jobs if j.get("is_new")]
-    if not new_jobs:
-        lines += ["_No new postings this run._"]
+    if not jobs:
+        lines += ["_No matches this run._"]
         return "\n".join(lines)
 
+    # "new" is per-device (browser-side), so the digest just lists everything by role.
     by_role: dict[str, list[dict]] = {}
-    for j in new_jobs:
+    for j in jobs:
         by_role.setdefault(j.get("role_label") or "Other", []).append(j)
 
     for role, group in by_role.items():
         lines += [f"### {role} ({len(group)})", ""]
         for j in group[:limit]:
             where = f" — {j['location']}" if j.get("location") else ""
-            lines.append(f"- [{j['title']}]({j['url']}) · {j['company']}{where}")
+            cv = f" · **send:** {j['cv']}" if j.get("cv") else ""
+            lines.append(f"- [{j['title']}]({j['url']}) · {j['company']}{where}{cv}")
         if len(group) > limit:
             lines.append(f"- _...and {len(group) - limit} more_")
         lines.append("")
@@ -64,18 +65,16 @@ def render_markdown(jobs: list[dict], meta: dict, limit: int = 40) -> str:
     return "\n".join(lines)
 
 
-def build_meta(total_scanned: int, new_count: int, companies: int, errors: list[dict]) -> dict:
+def build_meta(total_scanned: int, companies: int, errors: list[dict]) -> dict:
     return {
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "total_scanned": total_scanned,
-        "new_count": new_count,
         "companies": companies,
         "errors": errors,
     }
 
 
-def to_payload(job: Job, is_new: bool, applied: bool) -> dict:
+def to_payload(job: Job) -> dict:
     d = job.to_dict()
-    d["is_new"] = is_new
-    d["applied"] = applied
+    d["cv"] = d.pop("cv_label", "")  # the page reads `cv`; never the file, only the label
     return d

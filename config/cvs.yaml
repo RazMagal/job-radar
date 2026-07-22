@@ -1,0 +1,30 @@
+# Which CV to send for which role.
+#
+# The tool tells you which CV a job wants; it does NOT store or send the file. Keep the
+# actual PDFs/DOCX in cv/ (gitignored) — they're personal data and must never reach the
+# public repo or the published page. Only this mapping is tracked, and only the `label`
+# is ever shown on the page.
+#
+#   label  what shows on each matching job's card ("send: <label>")
+#   file   the file in cv/ to send (optional — `cv list` warns if it's missing)
+#   roles  role ids from roles.yaml this CV covers (verification, chip-design, linux, ai)
+#
+# Each role should map to exactly one CV. If two CVs claim the same role, the first
+# listed wins and `cv list` flags it.
+
+cvs:
+  - label: Verification
+    file: verification.pdf
+    roles: [verification]
+
+  - label: Chip Design
+    file: chip-design.pdf
+    roles: [chip-design]
+
+  - label: Linux
+    file: linux.pdf
+    roles: [linux]
+
+  - label: AI Research
+    file: ai-research.pdf
+    roles: [ai]

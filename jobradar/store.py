@@ -1,13 +1,13 @@
-"""Persistence for the two things worth remembering: what you've seen, what you applied to.
+"""The applied-jobs log — a local record of what you applied to, with the CV you sent.
 
-Both are JSON. When a vault key is set (see jobradar/vault.py) each log lives only as
-ciphertext — data/seen.json.enc and data/applied.json.enc — and the plaintext never
-touches disk. Without a key they're plain files. The repo is public, so the encrypted
-form is what belongs in git; see HOW_TO.md.
+Everything here is local and offline. The log lives only on your machine (gitignored,
+like cv/) and never reaches the public repo or the cloud scan. "New" detection and
+applied-hiding on the page are handled client-side in the browser; this file is only the
+durable CLI record — what you applied to, when, which CV — for your own reference and for
+correlating CVs with replies later.
 
-There's a third state: an encrypted log exists but this process has no key (a CI run
-where the JOBRADAR_KEY secret isn't set). It can't be read and mustn't be overwritten,
-so the store runs "locked" — memory-less, and every write is a no-op — and callers warn.
+Metadata for an id (company/title/url) is resolved from the last scan's data/latest.json,
+which every scan writes; that's the catalog the page's ids come from.
 """
 
 from __future__ import annotations
@@ -16,59 +16,14 @@ import json
 from datetime import date
 from pathlib import Path
 
-from . import vault
-from .models import Job
-
 
 class Store:
     def __init__(self, data_dir: Path):
         self.dir = Path(data_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
-        self.seen_path = self.dir / "seen.json"
-        self.seen_enc_path = self.dir / "seen.json.enc"
         self.applied_path = self.dir / "applied.json"
-        self.applied_enc_path = self.dir / "applied.json.enc"
-        self.key = vault.load_key()
-        self.locked = False  # set when an encrypted log exists but we have no key
-
-        self.seen = self._load_log(self.seen_path, self.seen_enc_path)
-        self.applied = self._load_log(self.applied_path, self.applied_enc_path)
-
-    @property
-    def encrypted(self) -> bool:
-        return self.key is not None
-
-    # -- log I/O -------------------------------------------------------------
-
-    def _load_log(self, plain: Path, enc: Path) -> dict:
-        if self.key:
-            if enc.exists():
-                raw = vault.decrypt(enc.read_bytes(), self.key)
-                return json.loads(raw.decode("utf-8")) or {}
-            # Key set but nothing encrypted yet: adopt existing plaintext so turning
-            # encryption on doesn't silently lose the log.
-            return self._read_json(plain)
-        if enc.exists():
-            # Encrypted, but no key here. We can't read it and must not write plaintext
-            # beside it, so run memory-less rather than corrupt the ciphertext.
-            self.locked = True
-            return {}
-        return self._read_json(plain)
-
-    def _save_log(self, data: dict, plain: Path, enc: Path) -> None:
-        if self.locked:
-            return  # no key: leave the ciphertext untouched rather than clobber it
-        blob = json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True)
-        if self.key:
-            tmp = enc.with_suffix(".enc.tmp")
-            tmp.write_bytes(vault.encrypt(blob.encode("utf-8"), self.key))
-            tmp.replace(enc)  # atomic
-            if plain.exists():
-                plain.unlink()  # never leave plaintext beside the ciphertext
-        else:
-            tmp = plain.with_suffix(plain.suffix + ".tmp")
-            tmp.write_text(blob, encoding="utf-8")
-            tmp.replace(plain)  # atomic: a killed run can't leave a half-written log
+        self.latest_path = self.dir / "latest.json"
+        self.applied: dict[str, dict] = self._read_json(self.applied_path)
 
     @staticmethod
     def _read_json(path: Path) -> dict:
@@ -80,59 +35,59 @@ class Store:
             raise SystemExit(f"{path} is corrupt ({exc}); fix or delete it and re-run") from None
         return data if isinstance(data, dict) else {}
 
-    # -- queries -------------------------------------------------------------
-
-    def is_new(self, job: Job) -> bool:
-        return job.id not in self.seen and job.id not in self.applied
+    def _write_applied(self) -> None:
+        tmp = self.applied_path.with_suffix(".json.tmp")
+        tmp.write_text(
+            json.dumps(self.applied, indent=2, ensure_ascii=False, sort_keys=True),
+            encoding="utf-8",
+        )
+        tmp.replace(self.applied_path)  # atomic
 
     def has_applied(self, job_id: str) -> bool:
         return job_id in self.applied
 
-    # -- mutations -----------------------------------------------------------
-
-    def record_seen(self, jobs: list[Job], today: str | None = None) -> None:
-        stamp = today or date.today().isoformat()
-        for j in jobs:
-            entry = self.seen.get(j.id)
-            if entry:
-                entry["last_seen"] = stamp
-            else:
-                self.seen[j.id] = {
-                    "first_seen": stamp,
-                    "last_seen": stamp,
-                    "company": j.company,
-                    "title": j.title,
-                    "url": j.url,
-                }
-        self._save_log(self.seen, self.seen_path, self.seen_enc_path)
-
-    def mark_applied(self, job_id: str, meta: dict, note: str = "") -> dict:
+    def mark_applied(self, job_id: str, meta: dict, note: str = "", cv: str = "") -> dict:
         entry = {
             "applied_on": date.today().isoformat(),
             "company": meta.get("company", ""),
             "title": meta.get("title", ""),
             "url": meta.get("url", ""),
         }
+        if cv:
+            entry["cv"] = cv  # which CV you sent — the point of the whole feature later
         if note:
             entry["note"] = note
         self.applied[job_id] = entry
-        self._save_log(self.applied, self.applied_path, self.applied_enc_path)
+        self._write_applied()
         return entry
 
     def unmark_applied(self, job_id: str) -> bool:
         if job_id not in self.applied:
             return False
         del self.applied[job_id]
-        self._save_log(self.applied, self.applied_path, self.applied_enc_path)
+        self._write_applied()
         return True
 
+    def _latest_jobs(self) -> list[dict]:
+        data = self._read_json(self.latest_path)
+        jobs = data.get("jobs")
+        return jobs if isinstance(jobs, list) else []
+
     def lookup(self, needle: str) -> tuple[str, dict] | None:
-        """Find a job by id or by URL, in either log."""
-        for pool in (self.seen, self.applied):
-            if needle in pool:
-                return needle, pool[needle]
-        for pool in (self.seen, self.applied):
-            for jid, meta in pool.items():
-                if meta.get("url") == needle:
-                    return jid, meta
+        """Resolve a job id or URL to (id, metadata).
+
+        Checks the applied log first (so `unapplied`/re-`applied` work without a scan),
+        then the last scan's catalog. Returns None if the id/URL isn't known — usually
+        means the id is stale or you haven't scanned on this machine yet.
+        """
+        if needle in self.applied:
+            return needle, self.applied[needle]
+
+        for job in self._latest_jobs():
+            if job.get("id") == needle or job.get("url") == needle:
+                return job["id"], {
+                    "company": job.get("company", ""),
+                    "title": job.get("title", ""),
+                    "url": job.get("url", ""),
+                }
         return None

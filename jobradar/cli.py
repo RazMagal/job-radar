@@ -5,13 +5,13 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import json
-import os
 import sys
 from pathlib import Path
 
 import yaml
 
-from . import sources, vault
+from . import sources
+from .cvs import load_cvs
 from .matcher import load_roles, match_all
 from .models import Job
 from .report import build_meta, render_markdown, to_payload, write_html
@@ -72,12 +72,11 @@ def fetch_all(companies: list[dict], workers: int = 8) -> tuple[list[Job], list[
 
 
 def cmd_scan(args) -> int:
-    g, r, y, dim, reset = _color(sys.stdout.isatty())
+    g, r, _y, dim, reset = _color(sys.stdout.isatty())
     config_dir = Path(args.config)
 
     settings, profiles = load_roles(config_dir / "roles.yaml")
     companies = load_companies(config_dir / "companies.yaml", ci=args.ci)
-    store = Store(Path(args.data))
 
     print(f"Scanning {len(companies)} board(s)...")
     raw_jobs, errors = fetch_all(companies)
@@ -89,60 +88,47 @@ def cmd_scan(args) -> int:
         unique.setdefault(job.id, job)
     matches = list(unique.values())
 
-    new_jobs = [j for j in matches if store.is_new(j)]
-    if args.new_only:
-        matches = new_jobs
+    # Tag each job with the CV to send for its role (label only — never the file).
+    cvs = load_cvs(config_dir / "cvs.yaml")
+    for job in matches:
+        cv = cvs.for_role(job.role)
+        if cv:
+            job.cv_label = cv.label
 
-    if args.redact_applied:
-        # For the public page: applied jobs are dropped entirely rather than flagged.
-        # Publishing `applied: true` would leak where you applied just as surely as
-        # publishing the log itself.
-        matches = [j for j in matches if not store.has_applied(j.id)]
-        payload = [to_payload(j, is_new=store.is_new(j), applied=False) for j in matches]
-    else:
-        payload = [
-            to_payload(j, is_new=store.is_new(j), applied=store.has_applied(j.id)) for j in matches
-        ]
-    board_failed = len(errors)
-    if store.locked:
-        # Surfaced on the page's warning strip so it's visible when viewing from a phone.
-        errors = errors + [
-            {
-                "company": "logs",
-                "error": "encrypted but no key here — 'new' badges and applied-hiding stay "
-                "off until the JOBRADAR_KEY secret is set",
-            }
-        ]
-    meta = build_meta(len(raw_jobs), len(new_jobs), len(companies), errors)
+    # The scan is stateless: it renders the current matches and nothing personal. "New"
+    # and "applied" are tracked per-device in the browser (see template.html), so no seen
+    # log, no applied state, and nothing to keep private ever reaches this output.
+    payload = [to_payload(j) for j in matches]
+    meta = build_meta(len(raw_jobs), len(companies), errors)
 
     out = write_html(Path(args.out), payload, meta)
-    Path(args.data, "latest.json").write_text(
+    data_dir = Path(args.data)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    # latest.json is the local catalog `applied <id>` resolves metadata from; gitignored.
+    (data_dir / "latest.json").write_text(
         json.dumps({"meta": meta, "jobs": payload}, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-
-    if not args.dry_run:
-        store.record_seen(matches)
 
     for err in errors:
         print(f"  {r}FAIL{reset} {err['company']}: {err['error']}", file=sys.stderr)
 
     print(
-        f"{g}{len(new_jobs)} new{reset} · {len(matches)} shown · "
-        f"{len(raw_jobs)} scanned · {len(errors)} board error(s)"
+        f"{g}{len(matches)} match(es){reset} · {len(raw_jobs)} scanned · "
+        f"{len(errors)} board error(s)"
     )
     print(f"{dim}report: {out}{reset}")
 
     if args.markdown:
         Path(args.markdown).write_text(render_markdown(payload, meta), encoding="utf-8")
 
-    if args.print_new:
-        for j in new_jobs:
-            print(f"  [{j.score:>2}] {j.company}: {j.title} — {j.location}\n       {j.url}")
+    if args.print:
+        for j in matches:
+            cv = f"  [{j.cv_label}]" if j.cv_label else ""
+            print(f"  [{j.score:>2}] {j.company}: {j.title} — {j.location}{cv}\n       {j.url}")
 
     # Every board failing means something systemic (network, blocked IP) — fail the run.
-    # The locked-log warning isn't a board failure, so it's excluded from this count.
-    return 1 if board_failed and board_failed == len(companies) else 0
+    return 1 if errors and len(errors) == len(companies) else 0
 
 
 # -------------------------------------------------------------------------- check
@@ -175,20 +161,8 @@ def cmd_check(args) -> int:
 # ------------------------------------------------------------------------ applied
 
 
-def _locked_bail(store) -> bool:
-    if store.locked:
-        print(
-            f"logs are encrypted but no key is available — set ${vault.KEY_ENV} or restore "
-            f"{vault.key_path()}",
-            file=sys.stderr,
-        )
-    return store.locked
-
-
 def cmd_applied(args) -> int:
     store = Store(Path(args.data))
-    if _locked_bail(store):
-        return 1
     rc = 0
     for needle in args.ids:
         found = store.lookup(needle)
@@ -197,15 +171,14 @@ def cmd_applied(args) -> int:
             rc = 1
             continue
         job_id, meta = found
-        entry = store.mark_applied(job_id, meta, note=args.note)
-        print(f"applied {job_id}  {entry['company']}: {entry['title']}")
+        entry = store.mark_applied(job_id, meta, note=args.note, cv=args.cv)
+        cv = f"  (cv: {entry['cv']})" if entry.get("cv") else ""
+        print(f"applied {job_id}  {entry['company']}: {entry['title']}{cv}")
     return rc
 
 
 def cmd_unapplied(args) -> int:
     store = Store(Path(args.data))
-    if _locked_bail(store):
-        return 1
     rc = 0
     for needle in args.ids:
         found = store.lookup(needle)
@@ -220,8 +193,6 @@ def cmd_unapplied(args) -> int:
 
 def cmd_log(args) -> int:
     store = Store(Path(args.data))
-    if _locked_bail(store):
-        return 1
     if not store.applied:
         print("Nothing applied yet.")
         return 0
@@ -229,6 +200,8 @@ def cmd_log(args) -> int:
     print(f"{len(rows)} application(s):\n")
     for job_id, meta in rows:
         print(f"  {meta.get('applied_on', '?')}  {job_id}  {meta.get('company', '')}: {meta.get('title', '')}")
+        if meta.get("cv"):
+            print(f"              cv:   {meta['cv']}")
         if meta.get("note"):
             print(f"              note: {meta['note']}")
         if meta.get("url"):
@@ -236,79 +209,35 @@ def cmd_log(args) -> int:
     return 0
 
 
-# -------------------------------------------------------------------------- vault
+# ---------------------------------------------------------------------------- cv
 
 
-def cmd_vault_init(args) -> int:
-    from . import vault
+def cmd_cv(args) -> int:
+    config_dir = Path(args.config)
+    reg = load_cvs(config_dir / "cvs.yaml")
+    if not reg.cvs:
+        print("No CVs configured. Add them to config/cvs.yaml (see cv/README.md).")
+        return 0
 
-    key_file = vault.key_path()
-    if os.environ.get(vault.KEY_ENV):
-        print(f"${vault.KEY_ENV} is already set in this shell; unset it to create a new key.")
-        return 1
-    if key_file.exists():
-        # Overwriting the key would make an existing encrypted log permanently unreadable.
-        print(f"A key already exists at {key_file} — refusing to overwrite it.")
-        print("Delete it yourself only if you are certain no encrypted log depends on it.")
-        return 1
+    _settings, profiles = load_roles(config_dir / "roles.yaml")
+    cv_dir = config_dir.parent / "cv"
 
-    store = Store(Path(args.data))
-    if store.seen_enc_path.exists() or store.applied_enc_path.exists():
-        print("An encrypted log already exists in this data dir; refusing to re-init.")
-        return 1
+    print(f"{len(reg.cvs)} CV(s):\n")
+    for cv in reg.cvs:
+        roles = ", ".join(cv.roles) or "-"
+        if not cv.file:
+            state = "no file"
+        elif (cv_dir / cv.file).exists():
+            state = "ok"
+        else:
+            state = "MISSING"
+        print(f"  {cv.label:14} roles: {roles:26} file: {cv.file or '-':20} [{state}]")
 
-    seen, applied = dict(store.seen), dict(store.applied)
-
-    key = vault.generate_key()
-    vault.save_key(key)
-    store.key = key
-    store.seen, store.applied = seen, applied
-    store._save_log(store.seen, store.seen_path, store.seen_enc_path)
-    store._save_log(store.applied, store.applied_path, store.applied_enc_path)
-
-    print(f"key written to {key_file} (mode 0600)")
-    print(f"encrypted: seen.json.enc ({len(seen)} seen), applied.json.enc ({len(applied)} applied)")
-    print("plaintext logs removed")
-    print()
-    print("Back this key up somewhere safe — the logs cannot be recovered without it.")
-    print("A password manager entry is ideal: a 44-character string that never changes.")
-    print()
-    print("To run scans in the cloud / from your phone, the key must be a repo secret,")
-    print("or 'new' detection won't work there:")
-    print(f"  gh secret set {vault.KEY_ENV} --repo <owner>/<repo> --body '{key.decode()}'")
-    return 0
-
-
-def cmd_vault_status(args) -> int:
-    from . import vault
-
-    store = Store(Path(args.data))
-    if os.environ.get(vault.KEY_ENV):
-        print(f"key:       from ${vault.KEY_ENV}")
-    elif vault.key_path().exists():
-        print(f"key:       {vault.key_path()}")
-    else:
-        print("key:       none — logs are stored as plaintext")
-
-    logs = (
-        ("seen", store.seen_path, store.seen_enc_path),
-        ("applied", store.applied_path, store.applied_enc_path),
-    )
-    for name, plain, enc in logs:
-        mode = "encrypted" if enc.exists() else ("plaintext" if plain.exists() else "absent")
-        print(f"{name + ':':10} {mode}")
-
-    if store.locked:
-        print(
-            "\nlocked: an encrypted log exists but no key is available here — reads return "
-            "empty and writes are skipped. Restore the key to unlock."
-        )
-    else:
-        print(f"entries:   {len(store.seen)} seen, {len(store.applied)} applied")
-
-    stale = [n for n, p, e in logs if e.exists() and p.exists()]
-    if stale:
-        print(f"\nwarning: stale plaintext beside ciphertext for {', '.join(stale)} — delete it.")
+    uncovered = sorted({p.id for p in profiles} - set(reg.by_role))
+    if uncovered:
+        print(f"\nroles with no CV: {', '.join(uncovered)}")
+    for role_id, labels in reg.conflicts.items():
+        print(f"role {role_id!r} is claimed by several CVs ({', '.join(labels)}); first wins")
     return 0
 
 
@@ -318,21 +247,14 @@ def cmd_vault_status(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="jobradar", description="Scan company job boards for roles you want.")
     p.add_argument("--config", default=str(DEFAULT_CONFIG), help="config directory")
-    p.add_argument("--data", default=str(DEFAULT_DATA), help="data directory (seen/applied logs)")
+    p.add_argument("--data", default=str(DEFAULT_DATA), help="data directory (local applied log + last scan)")
     sub = p.add_subparsers(dest="command", required=True)
 
     s = sub.add_parser("scan", help="fetch every board, match, and write the report")
     s.add_argument("--out", default=str(DEFAULT_OUT), help="HTML report path")
     s.add_argument("--markdown", help="also write a markdown digest here")
-    s.add_argument("--new-only", action="store_true", help="report only postings never seen before")
-    s.add_argument("--print-new", action="store_true", help="print new matches to stdout")
     s.add_argument("--ci", action="store_true", help="skip boards marked `ci: false`")
-    s.add_argument("--dry-run", action="store_true", help="don't update the seen log")
-    s.add_argument(
-        "--redact-applied",
-        action="store_true",
-        help="omit applied jobs from the report entirely (use for any public page)",
-    )
+    s.add_argument("--print", action="store_true", help="print matches to stdout")
     s.set_defaults(func=cmd_scan)
 
     c = sub.add_parser("check", help="verify every configured board still resolves")
@@ -341,6 +263,7 @@ def build_parser() -> argparse.ArgumentParser:
     a = sub.add_parser("applied", help="mark job id(s) or URL(s) as applied")
     a.add_argument("ids", nargs="+")
     a.add_argument("--note", default="", help="free-text note")
+    a.add_argument("--cv", default="", help="which CV you sent (label from cvs.yaml)")
     a.set_defaults(func=cmd_applied)
 
     u = sub.add_parser("unapplied", help="undo an `applied` mark")
@@ -350,12 +273,10 @@ def build_parser() -> argparse.ArgumentParser:
     lg = sub.add_parser("log", help="show everything you've applied to")
     lg.set_defaults(func=cmd_log)
 
-    v = sub.add_parser("vault", help="encrypt the applied log so a public repo can't leak it")
-    vsub = v.add_subparsers(dest="vault_command", required=True)
-    vi = vsub.add_parser("init", help="generate a key and encrypt the applied log")
-    vi.set_defaults(func=cmd_vault_init)
-    vs = vsub.add_parser("status", help="show key and encryption state")
-    vs.set_defaults(func=cmd_vault_status)
+    cv = sub.add_parser("cv", help="manage CVs (which one to send per role)")
+    cvsub = cv.add_subparsers(dest="cv_command", required=True)
+    cvl = cvsub.add_parser("list", help="list configured CVs and their role coverage")
+    cvl.set_defaults(func=cmd_cv)
 
     return p
 
