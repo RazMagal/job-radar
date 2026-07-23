@@ -15,9 +15,11 @@ roles under a pile of unrelated engineering titles.
    someone reskins a website.
 2. **Match** — scores each title against the role profiles in `config/roles.yaml`
    and filters by location.
-3. **Recommend a CV** — tags each match with the CV to send for its role
-   (`config/cvs.yaml`). The label shows on the card; the file itself never leaves
-   your machine.
+3. **Recommend a CV** — tags each match with the CV to send. By default that's the CV
+   mapped to the job's role (`config/cvs.yaml`). With `scan --deep` it reads each job's
+   *description* and the *text of your CVs* and picks the best fit per job, with the
+   reason ("uvm, sva assertions, functional coverage") — catching the crossovers a title
+   alone hides. Local only; the file itself never leaves your machine.
 4. **Publish** — writes a self-contained `site/index.html`, deployed to GitHub Pages.
    The scan is **stateless**: it renders the current matches and nothing personal.
 5. **Remember, privately** — "new since last visit" and "hide the ones I applied to"
@@ -33,6 +35,7 @@ pip install -r requirements.txt
 ./jobradar.py check           # verify every configured board still resolves
 ./jobradar.py scan            # fetch, match, write site/index.html
 ./jobradar.py scan --print    # ...and print the matches
+./jobradar.py scan --deep     # read job descriptions + your CVs, pick a CV per job
 
 ./jobradar.py cv list                   # which CV maps to which role; are the files there
 ./jobradar.py applied a1b2c3d4e5f6 --cv Verification   # mark applied (id or job URL)
@@ -82,9 +85,11 @@ machine, not from Actions. CI installs `requirements-core.txt` accordingly.
 
 ```
 jobradar/
-  sources/        one adapter per ATS, self-registering
+  sources/        one adapter per ATS, self-registering (+ description fetchers)
   matcher.py      role scoring + location filter
   cvs.py          role -> CV mapping
+  cvtext.py       CV text extraction (PDF/DOCX/TXT)
+  cvmatch.py      per-job CV pick from description + CV text (--deep)
   store.py        the local applied log (id -> metadata via the last scan)
   report.py       fills template.html
   cli.py

@@ -4,6 +4,7 @@ Practical recipes. For what the project *is*, see [README.md](README.md).
 
 - [First-time setup](#first-time-setup)
 - [The daily loop](#the-daily-loop)
+- [Which CV to send (`--deep`)](#which-cv-to-send---deep)
 - [How privacy works](#how-privacy-works-nothing-personal-leaves-your-machine)
 - [Adding a company](#adding-a-company)
 - [Tuning what matches](#tuning-what-matches)
@@ -60,6 +61,51 @@ Copy, and paste into a terminal to persist them to your local log.
 
 Marking a job applied dims it on the page (browser-side) and records it in
 `data/applied.json` once you run the command.
+
+---
+
+## Which CV to send (`--deep`)
+
+Every match carries a `send: X` label. By default that's just the CV mapped to the job's
+role in `config/cvs.yaml` — which mostly restates the role and isn't worth much.
+
+`--deep` makes it mean something:
+
+```bash
+./jobradar.py scan --deep --print
+```
+
+It fetches each matched job's **description**, reads the **text of your actual CVs** in
+`cv/`, and picks the best fit per job — with the reason:
+
+```
+  [ 7] Mobileye: Experienced SoC Verification Engineer — Haifa  [Verification]
+       why: verification, coverage, uvm, axi, simulation, soc
+```
+
+How it decides: terms are weighted by TF-IDF across your own CVs, so something that
+appears in *every* CV barely counts while a term distinctive to one — `uvm`, `pytorch`,
+`device driver` — carries the signal. Two-word terms ("design verification") count double.
+No LLM, no API key, no network beyond the job boards; the same input always gives the
+same answer, and every pick shows its evidence.
+
+**It only overrules the role default when it's decisive** (30% better). A Linux SRE role
+at an AI company is thick with GPU and accelerator terms, but you'd still send the Linux
+CV — so a modest lead isn't enough. A "Systems Engineer" posting whose body is all UVM
+*is* decisive, and gets flipped to the verification CV. That crossover is the whole point.
+
+Notes:
+
+- **Local only.** Your CVs are gitignored, so the cloud runner has no access to them. The
+  cloud page keeps the plain role mapping; run `--deep` on your laptop, which is where you
+  apply from anyway.
+- **Slower.** Workday needs one extra request per matched job (its list carries no
+  description); Greenhouse, Ashby and Lever hand theirs over in the call already made.
+  Under `--deep`, LinkedIn/Indeed also fetch descriptions, which is the slow part.
+- **Needs the CV files.** Without readable files in `cv/` it says so and keeps the role
+  mapping. Scanned/image-only PDFs extract nothing — there's no OCR.
+- Descriptions are used in memory and thrown away. They're never written to disk or
+  published.
 
 ---
 

@@ -6,8 +6,13 @@
 # is ever shown on the page.
 #
 #   label  what shows on each matching job's card ("send: <label>")
-#   file   the file in cv/ to send (optional — `cv list` warns if it's missing)
+#   file   the file in cv/ (`cv list` warns if it's missing)
 #   roles  role ids from roles.yaml this CV covers (verification, chip-design, linux, ai)
+#
+# This mapping is the DEFAULT recommendation. `scan --deep` reads the text of the files
+# below plus each job's description and can overrule the default per job when the
+# description clearly fits another CV better — a "Systems Engineer" posting whose body is
+# all UVM gets the verification CV. A plain scan never opens the files.
 #
 # Each role should map to exactly one CV. If two CVs claim the same role, the first
 # listed wins and `cv list` flags it.
