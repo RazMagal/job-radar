@@ -13,3 +13,9 @@
 # install, use requirements-core.txt and the jobspy entries will fail loudly in
 # `check` rather than silently returning nothing.
 python-jobspy==1.1.82
+
+# CV reading for `scan --deep` (Stage 2 CV matching). Local-only — the cloud scan
+# never touches CVs, so these stay out of requirements-core.txt. Both are small and
+# pure-Python. pypdf handles text PDFs (scanned/image PDFs need OCR, unsupported).
+pypdf>=4.0
+python-docx>=1.1

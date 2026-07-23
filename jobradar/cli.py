@@ -11,7 +11,9 @@ from pathlib import Path
 import yaml
 
 from . import sources
+from .cvmatch import CVMatcher
 from .cvs import load_cvs
+from .cvtext import CVTextError, extract_text
 from .matcher import load_roles, match_all
 from .models import Job
 from .report import build_meta, render_markdown, to_payload, write_html
@@ -23,6 +25,11 @@ DEFAULT_DATA = ROOT / "data"
 DEFAULT_OUT = ROOT / "site" / "index.html"
 
 GREEN, RED, YELLOW, DIM, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
+
+# --deep CV matching: a job needs this much overlap before we say anything at all,
+# and a description-based pick must beat the role default by this factor to overrule it.
+MIN_CV_SCORE = 0.15
+OVERRIDE_MARGIN = 1.30
 
 
 def _color(enabled: bool):
@@ -48,13 +55,15 @@ def load_companies(path: Path, ci: bool = False) -> list[dict]:
     return entries
 
 
-def fetch_all(companies: list[dict], workers: int = 8) -> tuple[list[Job], list[dict]]:
+def fetch_all(
+    companies: list[dict], workers: int = 8, deep: bool = False
+) -> tuple[list[Job], list[dict]]:
     """Fetch every board in parallel. One bad board must never abort the run."""
     jobs: list[Job] = []
     errors: list[dict] = []
 
     def run(cfg: dict) -> list[Job]:
-        return list(sources.get(cfg["type"])(cfg))
+        return list(sources.get(cfg["type"])(cfg, deep=deep))
 
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {pool.submit(run, c): c for c in companies}
@@ -68,6 +77,89 @@ def fetch_all(companies: list[dict], workers: int = 8) -> tuple[list[Job], list[
     return jobs, errors
 
 
+# ----------------------------------------------------------------------- deep / cv
+
+
+def _fill_descriptions(jobs: list[Job], companies: list[dict], workers: int = 8) -> int:
+    """Fetch descriptions for matched jobs whose list endpoint couldn't supply one.
+
+    Only workday needs this today, and only for jobs that already matched — a per-job
+    GET across a whole board would be thousands of requests.
+    """
+    cfg_by_name = {c["name"]: c for c in companies}
+    todo = []
+    for job in jobs:
+        if job.description:
+            continue
+        describer = sources.get_describer(job.source.split(":")[0])
+        cfg = cfg_by_name.get(job.company)
+        if describer and cfg:
+            todo.append((job, describer, cfg))
+    if not todo:
+        return 0
+
+    filled = 0
+    with cf.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(d, cfg, job): job for job, d, cfg in todo}
+        for fut in cf.as_completed(futures):
+            job = futures[fut]
+            try:
+                job.description = fut.result() or ""
+            except Exception:
+                job.description = ""  # a missing description just weakens that match
+            if job.description:
+                filled += 1
+    return filled
+
+
+def _load_cv_texts(cv_dir: Path, registry) -> tuple[dict[str, str], list[str]]:
+    texts, problems = {}, []
+    for cv in registry.cvs:
+        if not cv.file:
+            continue
+        try:
+            texts[cv.label] = extract_text(Path(cv_dir) / cv.file)
+        except CVTextError as exc:
+            problems.append(str(exc))
+    return texts, problems
+
+
+def _deep_cv_match(jobs: list[Job], companies: list[dict], registry, cv_dir: Path) -> tuple:
+    """Override the role→CV default with a per-job pick based on the job description."""
+    filled = _fill_descriptions(jobs, companies)
+    texts, problems = _load_cv_texts(cv_dir, registry)
+    for problem in problems:
+        print(f"  cv: {problem}", file=sys.stderr)
+    if not texts:
+        print(
+            f"  cv: no readable CVs in {cv_dir} — keeping the role mapping "
+            "(add your CVs there; see cv/README.md)",
+            file=sys.stderr,
+        )
+        return filled, 0
+
+    matcher = CVMatcher.from_texts(texts)
+    picked = 0
+    for job in jobs:
+        ranked = matcher.rank(f"{job.title}\n{job.description}")
+        if not ranked or ranked[0].score < MIN_CV_SCORE:
+            continue  # weak signal — leave the role default alone
+
+        chosen, default = ranked[0], job.cv_label
+        by_label = {m.label: m for m in ranked}
+        # Only let the description overrule the role default when it's decisively
+        # better. An SRE role at an AI company is thick with GPU/accelerator terms,
+        # but you'd still send the Linux CV.
+        if default and default in by_label and chosen.label != default:
+            if chosen.score < by_label[default].score * OVERRIDE_MARGIN:
+                chosen = by_label[default]
+
+        job.cv_label = chosen.label
+        job.cv_reason = ", ".join(chosen.terms)
+        picked += 1
+    return filled, picked
+
+
 # --------------------------------------------------------------------------- scan
 
 
@@ -78,8 +170,8 @@ def cmd_scan(args) -> int:
     settings, profiles = load_roles(config_dir / "roles.yaml")
     companies = load_companies(config_dir / "companies.yaml", ci=args.ci)
 
-    print(f"Scanning {len(companies)} board(s)...")
-    raw_jobs, errors = fetch_all(companies)
+    print(f"Scanning {len(companies)} board(s)...{' (deep)' if args.deep else ''}")
+    raw_jobs, errors = fetch_all(companies, deep=args.deep)
     matches = match_all(raw_jobs, settings, profiles)
 
     # De-duplicate: the same posting can arrive from several sources.
@@ -94,6 +186,13 @@ def cmd_scan(args) -> int:
         cv = cvs.for_role(job.role)
         if cv:
             job.cv_label = cv.label
+
+    # --deep upgrades that default to a per-job pick read off the job description and
+    # the text of your actual CVs. Local only: the CVs are gitignored, so the cloud
+    # scan can't do this and keeps the role mapping.
+    deep_stats = None
+    if args.deep:
+        deep_stats = _deep_cv_match(matches, companies, cvs, config_dir.parent / "cv")
 
     # The scan is stateless: it renders the current matches and nothing personal. "New"
     # and "applied" are tracked per-device in the browser (see template.html), so no seen
@@ -117,6 +216,9 @@ def cmd_scan(args) -> int:
         f"{g}{len(matches)} match(es){reset} · {len(raw_jobs)} scanned · "
         f"{len(errors)} board error(s)"
     )
+    if deep_stats:
+        filled, picked = deep_stats
+        print(f"{dim}deep: {filled} description(s) fetched · {picked} CV pick(s){reset}")
     print(f"{dim}report: {out}{reset}")
 
     if args.markdown:
@@ -126,6 +228,8 @@ def cmd_scan(args) -> int:
         for j in matches:
             cv = f"  [{j.cv_label}]" if j.cv_label else ""
             print(f"  [{j.score:>2}] {j.company}: {j.title} — {j.location}{cv}\n       {j.url}")
+            if j.cv_reason:
+                print(f"       {dim}why: {j.cv_reason}{reset}")
 
     # Every board failing means something systemic (network, blocked IP) — fail the run.
     return 1 if errors and len(errors) == len(companies) else 0
@@ -255,6 +359,12 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--markdown", help="also write a markdown digest here")
     s.add_argument("--ci", action="store_true", help="skip boards marked `ci: false`")
     s.add_argument("--print", action="store_true", help="print matches to stdout")
+    s.add_argument(
+        "--deep",
+        action="store_true",
+        help="fetch job descriptions and pick the best CV per job from your CVs' text "
+        "(local only, slower)",
+    )
     s.set_defaults(func=cmd_scan)
 
     c = sub.add_parser("check", help="verify every configured board still resolves")

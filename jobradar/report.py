@@ -57,7 +57,8 @@ def render_markdown(jobs: list[dict], meta: dict, limit: int = 25) -> str:
         for j in group[:limit]:
             where = f" — {j['location']}" if j.get("location") else ""
             cv = f" · **send:** {j['cv']}" if j.get("cv") else ""
-            lines.append(f"- [{j['title']}]({j['url']}) · {j['company']}{where}{cv}")
+            why = f" _({j['cv_reason']})_" if j.get("cv_reason") else ""
+            lines.append(f"- [{j['title']}]({j['url']}) · {j['company']}{where}{cv}{why}")
         if len(group) > limit:
             lines.append(f"- _...and {len(group) - limit} more_")
         lines.append("")
@@ -76,5 +77,8 @@ def build_meta(total_scanned: int, companies: int, errors: list[dict]) -> dict:
 
 def to_payload(job: Job) -> dict:
     d = job.to_dict()
+    # The description is transient --deep working data: large, and it has no business
+    # in a published page or the local catalog.
+    d.pop("description", None)
     d["cv"] = d.pop("cv_label", "")  # the page reads `cv`; never the file, only the label
     return d
