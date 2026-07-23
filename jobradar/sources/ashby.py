@@ -10,7 +10,7 @@ API = "https://api.ashbyhq.com/posting-api/job-board/{board}"
 
 
 @register("ashby")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
     (board,) = require(cfg, "board")
     r = SESSION.get(API.format(board=board), timeout=TIMEOUT)
     if r.status_code in (400, 404):
@@ -27,6 +27,8 @@ def fetch(cfg: dict) -> list[Job]:
                 title=j.get("title", ""),
                 url=j.get("jobUrl", "") or j.get("applyUrl", ""),
                 location=j.get("location", "") or "",
+                # The list already carries the full plain-text description.
+                description=(j.get("descriptionPlain", "") or "") if deep else "",
                 department=j.get("department", "") or j.get("team", "") or "",
                 posted_at=(j.get("publishedAt") or "")[:10],
                 source="ashby",

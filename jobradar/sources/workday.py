@@ -11,9 +11,17 @@ from datetime import date, timedelta
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, parse_json, register, require
+from .base import (
+    SourceError,
+    html_to_text,
+    parse_json,
+    register,
+    register_describer,
+    require,
+)
 
 ENDPOINT = "https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs"
+DETAIL = "https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}{path}"
 VIEW = "https://{tenant}.{wd}.myworkdayjobs.com/en-US/{site}{path}"
 PAGE = 20
 MAX_PAGES = 25
@@ -38,7 +46,9 @@ def _posted_on(text: str) -> str:
 
 
 @register("workday")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
+    # `deep` is a no-op here: the list endpoint has no description, so it's fetched
+    # per matched job by the describer below rather than for every posting on the board.
     tenant, site = require(cfg, "tenant", "site")
     wd = cfg.get("wd", "wd1")
     url = ENDPOINT.format(tenant=tenant, wd=wd, site=site)
@@ -91,3 +101,20 @@ def fetch(cfg: dict) -> list[Job]:
             break
 
     return jobs
+
+
+@register_describer("workday")
+def describe(cfg: dict, job: Job) -> str:
+    """One GET per matched job: the CXS detail endpoint carries jobPostingInfo.jobDescription.
+    The externalPath is recovered from the view URL we built during the list fetch."""
+    tenant, site = cfg["tenant"], cfg["site"]
+    wd = cfg.get("wd", "wd1")
+    marker = f"/en-US/{site}"
+    if marker not in job.url:
+        return ""
+    path = job.url.split(marker, 1)[1]
+    r = SESSION.get(DETAIL.format(tenant=tenant, wd=wd, site=site, path=path), timeout=TIMEOUT)
+    if not r.ok:
+        return ""
+    info = (parse_json(r, f"workday/{tenant}/{site}/detail") or {}).get("jobPostingInfo") or {}
+    return html_to_text(info.get("jobDescription", ""))

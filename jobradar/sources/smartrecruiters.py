@@ -12,7 +12,9 @@ MAX_PAGES = 20
 
 
 @register("smartrecruiters")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
+    # deep unsupported here (would need a per-job fetch); matched SmartRecruiters jobs
+    # fall back to the role→CV mapping. No board uses it today.
     (company,) = require(cfg, "board")
     jobs, offset = [], 0
 

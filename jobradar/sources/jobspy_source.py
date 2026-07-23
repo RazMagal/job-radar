@@ -34,7 +34,7 @@ def _iso(value) -> str:
 
 
 @register("jobspy")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
     try:
         from jobspy import scrape_jobs
     except ImportError:
@@ -68,7 +68,9 @@ def fetch(cfg: dict) -> list[Job]:
                 country_indeed=cfg.get("country", "israel"),
                 results_wanted=int(cfg.get("results", 50)),
                 hours_old=hours_old,
-                linkedin_fetch_description=False,
+                # Under --deep, pull descriptions too (slower — a fetch per LinkedIn row)
+                # so CV matching has body text to work with, not just the title.
+                linkedin_fetch_description=deep,
             )
         except Exception as exc:
             failures.append(f"{site}: {exc}")
@@ -95,6 +97,7 @@ def fetch(cfg: dict) -> list[Job]:
                     location=str(row.get("location") or ""),
                     posted_at=posted,
                     source=f"jobspy:{row.get('site', site)}",
+                    description=str(row.get("description") or "") if deep else "",
                 )
             )
 

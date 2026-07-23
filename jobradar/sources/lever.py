@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, parse_json, register, require
+from .base import SourceError, html_to_text, parse_json, register, require
 
 API = "https://api{region}.lever.co/v0/postings/{board}?mode=json"
 
@@ -24,8 +24,19 @@ def _date(ms) -> str:
         return ""
 
 
+def _description(j: dict) -> str:
+    """The full posting is split: descriptionPlain (intro) + lists[] (the actual
+    responsibilities/requirements, as HTML) + additionalPlain (closing)."""
+    parts = [j.get("descriptionPlain", "") or ""]
+    for section in j.get("lists") or []:
+        parts.append(section.get("text", "") or "")
+        parts.append(html_to_text(section.get("content", "") or ""))
+    parts.append(j.get("additionalPlain", "") or "")
+    return "\n".join(p for p in parts if p).strip()
+
+
 @register("lever")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
     (board,) = require(cfg, "board")
     region = str(cfg.get("region", "")).lower()
     if region not in REGIONS:
@@ -51,6 +62,7 @@ def fetch(cfg: dict) -> list[Job]:
                 department=cats.get("team", "") or "",
                 posted_at=_date(j.get("createdAt")),
                 source="lever",
+                description=_description(j) if deep else "",
             )
         )
     return jobs

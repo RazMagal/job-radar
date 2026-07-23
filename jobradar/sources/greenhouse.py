@@ -4,15 +4,17 @@ from __future__ import annotations
 
 from ..http import SESSION, TIMEOUT
 from ..models import Job
-from .base import SourceError, parse_json, register, require
+from .base import SourceError, html_to_text, parse_json, register, require
 
 API = "https://boards-api.greenhouse.io/v1/boards/{board}/jobs"
 
 
 @register("greenhouse")
-def fetch(cfg: dict) -> list[Job]:
+def fetch(cfg: dict, deep: bool = False) -> list[Job]:
     (board,) = require(cfg, "board")
-    r = SESSION.get(API.format(board=board), timeout=TIMEOUT)
+    # `content=true` returns every job's HTML description in the one list call.
+    params = {"content": "true"} if deep else None
+    r = SESSION.get(API.format(board=board), params=params, timeout=TIMEOUT)
     if r.status_code == 404:
         raise SourceError(f"greenhouse board {board!r} does not exist")
     r.raise_for_status()
@@ -27,6 +29,7 @@ def fetch(cfg: dict) -> list[Job]:
                 location=(j.get("location") or {}).get("name", ""),
                 posted_at=(j.get("updated_at") or "")[:10],
                 source="greenhouse",
+                description=html_to_text(j.get("content", "")) if deep else "",
             )
         )
     return jobs

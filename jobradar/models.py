@@ -33,6 +33,11 @@ class Job:
 
     # Filled in from the CV registry: which CV to send for this job (label only).
     cv_label: str = ""
+    cv_reason: str = ""  # under --deep: the terms that drove the CV pick
+
+    # Transient: the job description, fetched only under `scan --deep` for CV matching.
+    # Never serialised to the payload (see report.to_payload) — it's large and local.
+    description: str = ""
 
     @property
     def id(self) -> str:
