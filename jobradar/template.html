@@ -147,6 +147,15 @@
     white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
   }
   .cv .cv-k { font-weight: 500; opacity: .7; }
+  /* why that CV was picked (deep scan only) — supporting text, not a chip */
+  .cv-why {
+    flex: 1 1 100%; min-width: 0;
+    font-size: 11px; line-height: 1.4; color: var(--muted);
+    overflow: hidden; overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; line-clamp: 2;
+  }
+  .cv-why .cv-why-k { color: var(--faint); font-weight: 600; }
   .badge {
     font-size: 10px; font-weight: 700; letter-spacing: .06em;
     padding: 2px 6px; border-radius: 4px; background: var(--new-bg); color: var(--new-text);
@@ -360,6 +369,11 @@ const META = __META_JSON__;
   function card(j) {
     var tags = (j.matched || []).map(function (m) { return '<span class="tag">' + esc(m) + "</span>"; }).join("");
     var cv = j.cv ? '<span class="cv" title="CV to send for this role"><span class="cv-k">send:</span> ' + esc(j.cv) + "</span>" : "";
+    // deep scans attach the terms that drove the pick; blank (or no CV) => nothing
+    var reason = j.cv && j.cv_reason ? String(j.cv_reason).trim() : "";
+    var why = reason
+      ? '<span class="cv-why" title="' + esc(reason) + '"><span class="cv-why-k">why:</span> ' + esc(reason) + "</span>"
+      : "";
     var meta = [
       '<span class="co">' + esc(j.company) + "</span>",
       j.location ? "<span>" + esc(j.location) + "</span>" : "",
@@ -372,7 +386,7 @@ const META = __META_JSON__;
         '<h3 class="title">' + (isNew(j) ? '<span class="badge">NEW</span>' : "") +
           '<a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.title) + "</a></h3>" +
         '<div class="meta">' + meta + "</div>" +
-        (cv || tags ? '<div class="tags">' + cv + tags + "</div>" : "") +
+        (cv || tags ? '<div class="tags">' + cv + why + tags + "</div>" : "") +
       "</div>" +
       '<div class="job-side">' +
         '<span class="score" title="match score">' + esc(j.score) + "</span>" +
