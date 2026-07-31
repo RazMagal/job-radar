@@ -19,6 +19,7 @@ descriptions and the text of the CVs and picks per job, with the reason.
 | Lever | assemble `descriptionPlain` + `lists[]` + `additionalPlain` | free |
 | Workday | per-job `GET /wday/cxs/{tenant}/{site}{externalPath}` | 1 request per *matched* job |
 | SmartRecruiters | not implemented — falls back to the role mapping | — |
+| Comeet | no description in the API (even the per-job endpoint) — role mapping | — |
 
 Only matched jobs get the per-job fetch, so it's tens of requests, not thousands.
 
@@ -57,17 +58,36 @@ it runs locally only because the cloud runner has no copy of them.
 
 ---
 
+## Description-based role matching — SHIPPED
+
+`scan --deep` now feeds the fetched descriptions into role scoring, so a posting whose
+title hides the role ("VLSI Engineer", "Member of Technical Staff", "Solution Architect
+…") gets pulled in when its body carries the role clearly. Two passes in `matcher.py`:
+the title pass is authoritative and unchanged (a job the title already classifies keeps
+that role — a chip role whose blurb name-drops ML stays chip); only a title that
+classifies into *nothing* falls through to the body pass, which requires `DESC_MIN_HITS`
+(2) distinct, non-overlapping primary keywords, none excluded. Body-sourced hits show as
+dashed `~` tags on the page. Only sources whose listing returns descriptions benefit
+(greenhouse/ashby/lever/jobspy); Workday and Comeet stay title-only, so their silicon
+retitles are covered by the expanded `match_any` vocabulary in `roles.yaml` (vlsi, dft,
+physical design, place and route, microarchitecture, …). Tune with `DESC_MIN_HITS` /
+`DESC_HIT` in `matcher.py`, or raise `min_score`, if the body pass is too loose.
+
+## Comeet adapter — SHIPPED
+
+Most of the Israeli chip scene hosts on Comeet, now readable via
+`jobradar/sources/comeet.py`: a plain `GET .../careers-api/2.0/company/{uid}/positions?
+token={token}`. Both keys are harvested once from the Comeet-hosted page (per-company and
+stable — see the `companies.yaml` header) and stored in config. Live boards added:
+Nuvoton, Ceva, NextSilicon, proteanTecs, NeuReality, Quantum Machines, Innoviz, DriveNets
+(Hailo parked — placeholder board). The API serves no description, so Comeet jobs are
+title-only.
+
 ## Smaller things
 
-- **Description-based *role* matching.** `--deep` already fetches descriptions, but
-  `matcher.py` still scores role fit on the title alone — so a posting titled "Systems
-  Engineer" with an all-UVM body never enters the results at all, and the CV matcher
-  never sees it. Feeding the description into role scoring under `--deep` would widen the
-  net, at the cost of more noise; worth trying with a higher `min_score`.
-- **More ATS adapters.** The big misses are documented at the bottom of
+- **More ATS adapters.** Remaining misses documented at the bottom of
   `config/companies.yaml`: Eightfold (Qualcomm), Avature (Synopsys), iCIMS (AMD, Arm),
-  Comeet (Hailo, NextSilicon, Ceva). Comeet needs a per-company API token that isn't in
-  the page HTML; the others look scrapeable.
+  Oracle HCM (TI), Workable (Vayyar). All look scrapeable but each needs its own reader.
 - **Dedup across sources.** The same job from LinkedIn and from the company's ATS has
   different titles and location spellings (one Hebrew, one English), so the fingerprint
   differs and it shows up twice.

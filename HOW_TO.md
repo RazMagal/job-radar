@@ -154,6 +154,7 @@ Find where the company's "Apply" button actually goes — that reveals the ATS:
 | `jobs.ashbyhq.com/acme` | `ashby` | `board: acme` |
 | `jobs.smartrecruiters.com/Acme` | `smartrecruiters` | `board: Acme` |
 | `acme.wd1.myworkdayjobs.com/Careers` | `workday` | `tenant: acme`, `wd: wd1`, `site: Careers` |
+| `comeet.com/jobs/acme/12.345` | `comeet` | `uid: "12.345"`, `token: "<harvested>"` |
 
 Add it to `config/companies.yaml`, then **always**:
 
@@ -182,6 +183,24 @@ Plenty of big chip companies aren't on any ATS this tool speaks — Qualcomm is 
 Eightfold, Synopsys on Avature, AMD and Arm on iCIMS. The bottom of `companies.yaml`
 lists these with the ATS each one actually uses, so you don't waste an evening
 rediscovering it. The LinkedIn/Indeed sweeps are the practical workaround.
+
+### Comeet specifically
+
+Most of the Israeli chip scene (Nuvoton, Ceva, NextSilicon, Quantum Machines,
+proteanTecs, …) is on Comeet, and it needs **two** values — a per-company `uid` and a
+`token`, both baked into the Comeet-hosted page. Harvest them once (they're stable):
+
+```bash
+curl -sL https://www.comeet.com/jobs/<slug>/<uid> | grep -oiE '"(uid|token)": *"[^"]+"'
+```
+
+The `<uid>` is the one in the URL; the `token` is the company one printed near the top.
+**Quote both in YAML** — `uid: "76.005"` unquoted is read as a float and breaks. A `400`
+from `check` means a wrong/rotated token or a deactivated account (Pliops is one).
+
+Comeet serves no job description, so its jobs are matched on **title only** — the same as
+Workday without a describer. That's why `roles.yaml` keeps a rich `match_any` vocabulary
+(vlsi, dft, physical design, …) rather than just exact job titles.
 
 ### Lever regions
 

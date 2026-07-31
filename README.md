@@ -10,11 +10,14 @@ roles under a pile of unrelated engineering titles.
 ## How it works
 
 1. **Fetch** — hits each company's ATS API directly (Greenhouse, Lever, Ashby,
-   SmartRecruiters, Workday) rather than scraping careers pages. That's where the
+   SmartRecruiters, Workday, Comeet) rather than scraping careers pages. That's where the
    postings actually live, it returns clean JSON, and it doesn't break every time
-   someone reskins a website.
+   someone reskins a website. Comeet in particular is where most of the Israeli chip
+   scene hosts (Nuvoton, Ceva, NextSilicon, Quantum Machines, proteanTecs, …).
 2. **Match** — scores each title against the role profiles in `config/roles.yaml`
-   and filters by location.
+   and filters by location. `scan --deep` also reads job *descriptions*, so a posting
+   whose title hides the role — a "VLSI Engineer" or "Systems Engineer" that's really
+   verification or chip design — still gets caught.
 3. **Recommend a CV** — tags each match with the CV to send. By default that's the CV
    mapped to the job's role (`config/cvs.yaml`). With `scan --deep` it reads each job's
    *description* and the *text of your CVs* and picks the best fit per job, with the
