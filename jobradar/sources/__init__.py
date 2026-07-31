@@ -2,7 +2,10 @@
 
 from . import (  # noqa: F401
     amazon,
+    amd,
+    arm,
     ashby,
+    avature,
     comeet,
     eightfold,
     google,
@@ -11,6 +14,7 @@ from . import (  # noqa: F401
     lever,
     oracle,
     smartrecruiters,
+    workable,
     workday,
 )
 from .base import (  # noqa: F401

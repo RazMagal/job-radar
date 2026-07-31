@@ -227,21 +227,40 @@ companies:
     location_id: "300000000361478"
     job_url: "https://careers.ti.com/job/{id}"
 
+  # ---- Wired up but currently empty/thin (ready for when they post IL roles) --
+  # Added so a future scan picks them up automatically. All verified live: the adapter
+  # resolves; there just aren't (m)any Israel roles right now. `check` will show these
+  # EMPTY (except Arm's ~2) until that changes — that's expected, not a failure.
+  - name: Vayyar               # radar chips (Yehud) — Workable board, currently empty
+    type: workable
+    board: vayyar
+
+  # AMD has no country filter, so its adapter pages the whole board (~1000 jobs) and keeps
+  # country_code == IL — heavy, and 0 IL today, so ci:false (run it locally on demand).
+  - name: AMD                  # ex-Xilinx Israel R&D — 0 public IL reqs right now
+    type: amd
+    ci: false
+
+  # Arm and Synopsys are HTML-only (no JSON feed) — narrow, isolated scrapers, so ci:false.
+  # Arm has ~2 Ra'anana verification roles; Synopsys' Israel facet is empty right now.
+  - name: Arm                  # careers.arm.com/search-jobs/Israel (HTML) — GPU/DV verification
+    type: arm
+    ci: false
+    location: Israel
+
+  - name: Synopsys             # synopsys.avature.net (HTML) — 21374 = Israel country facet
+    type: avature
+    ci: false
+    host: synopsys.avature.net
+    filter: "2001=21374&2001_format=3135&listFilterMode=1"
+
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
-  # Probed live and NOT worth an adapter today (empty, HTML-only, or auth-gated):
+  # Probed live and still out — no public JSON/HTML we can consume today:
   #
-  #   AMD        careers.amd.com/api/jobs is clean public JSON, but 0 Israel reqs right
-  #              now (verified via its country facet). Add an `amd` adapter when that
-  #              changes — the API is trivial; it's just empty for IL currently.
-  #   Arm        careers.arm.com/search-jobs/Israel — HTML only, ~2 Ra'anana verification
-  #              roles; no clean JSON, so left out (this tool avoids HTML scraping).
-  #   Synopsys   synopsys.avature.net — Avature, HTML only AND 0 Israel reqs on that
-  #              portal right now.
   #   Tower      jobs.towersemi.com -> SuccessFactors (career2.successfactors.eu, company
   #              towersemic) — session/CSRF-gated DWR/SAPUI5, no public JSON; needs a
   #              headless browser. ~77 reqs total, Migdal Haemek ("MH") facet.
-  #   Vayyar     apply.workable.com/vayyar — Workable (public API exists) but 0 openings.
-  #   Nokia      Avature — not yet probed.
+  #   Nokia      Avature — not yet probed (the `avature` type would likely fit).
   #   Apple, Western Digital   Workday exists but returns 401 (internal).
   #
   # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
