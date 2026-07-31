@@ -99,10 +99,14 @@ public JSON search we read the same way (all filtered to Israel server-side):
   (`recruitingCEJobRequisitions` + a location `finder`); reusable for other ORC employers
   via `host`/`site`/`location_id`.
 
-Still out (see the bottom of `config/companies.yaml` for the live-probed detail): **AMD**
-(clean JSON but 0 Israel reqs right now — add when it fills), **Arm** (HTML-only, ~2 IL
-verification roles), **Synopsys** (Avature, HTML-only + 0 IL), **Tower** (SuccessFactors,
-session/CSRF-gated DWR — needs a headless browser), **Vayyar** (Workable, empty).
+Also wired up (`workable`, `amd`, `arm`, `avature` types) so a future scan picks them up
+automatically, even though they're **empty/thin for Israel right now**: **Vayyar**
+(Workable), **AMD** (clean JSON, paged + `country_code==IL` filtered — 0 IL today), **Arm**
+and **Synopsys** (HTML scrapers — Arm has ~2 Ra'anana verification roles, Synopsys' Israel
+facet is empty). The two scrapers are `ci: false` and deliberately narrow.
+
+Still genuinely out: **Tower** (SuccessFactors, session/CSRF-gated DWR — needs a headless
+browser) and **Nokia** (Avature — the `avature` type would likely fit once probed).
 
 ## Smaller things
 

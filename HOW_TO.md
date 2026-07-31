@@ -213,10 +213,21 @@ way as an ATS, each with a fixed `type` (no token to harvest):
 | `qualcomm`, `microsoft` | Qualcomm, Microsoft | shared Eightfold "PCSX" API (`eightfold.py`) |
 | `google` | Google | careers-page `batchexecute` RPC — **fragile**: a Google deploy can rotate the RPC id (`check` catches it; re-harvest `RPC` in `google.py`) |
 | `oracle` | Texas Instruments | Oracle Recruiting Cloud; needs `host`, `site`, `location_id`, `job_url` |
+| `workable` | Vayyar | `board` = the Workable account slug |
+| `amd` | AMD | no country filter — pages the whole board and keeps `country_code == IL` (heavy; `ci: false`) |
+| `arm`, `avature` | Arm, Synopsys | **HTML scrapers** (no JSON feed) — narrow and isolated, `ci: false` |
 
 To point the `oracle` type at another Oracle-Recruiting employer, load their careers page,
 watch the `hcmRestApi/...recruitingCEJobRequisitions` XHR, and copy the `host`, `siteNumber`
-and the Israel `selectedLocationsFacet` id into config.
+and the Israel `selectedLocationsFacet` id into config. The `avature` type likewise takes a
+`host` + a `filter` query string pinning the country facet (read it off the site's location
+filter).
+
+The last four are wired up but currently **empty/thin** for Israel (Vayyar, AMD and
+Synopsys have 0 IL right now; Arm has ~2) — `check` shows them EMPTY until they post, which
+is expected, not a failure. The two HTML scrapers (`arm`, `avature`) are the only non-JSON
+sources here and are deliberately narrow; if a page layout changes they fail that one board
+loudly.
 
 If one of these fails **only in CI** (a datacenter-IP block — most likely `google`), mark
 that entry `ci: false` so it runs locally only, like the LinkedIn/Indeed sweeps.

@@ -17,7 +17,9 @@ roles under a pile of unrelated engineering titles.
    big-tech employers that run their own careers site are read the same way, through
    their public search APIs: **Amazon** (Annapurna Labs silicon), **Google**,
    **Microsoft**, **Qualcomm**, and **Texas Instruments** (Oracle) — all location-filtered
-   to Israel server-side.
+   to Israel server-side. A few more (Vayyar via Workable, AMD, and Arm/Synopsys via small
+   HTML parsers) are wired up but quiet for now — they'll surface automatically when those
+   companies post Israel roles.
 2. **Match** — scores each title against the role profiles in `config/roles.yaml`
    and filters by location. `scan --deep` also reads job *descriptions*, so a posting
    whose title hides the role — a "VLSI Engineer" or "Systems Engineer" that's really
