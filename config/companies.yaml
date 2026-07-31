@@ -201,6 +201,16 @@ companies:
     location: Israel
     country: ISR
 
+  # Qualcomm and Microsoft both run Eightfold's public "PCSX" search API (same shape,
+  # different host+domain — see jobradar/sources/eightfold.py).
+  - name: Qualcomm             # Snapdragon modem/RF/camera silicon — ASIC, firmware, validation
+    type: qualcomm
+    location: Israel
+
+  - name: Microsoft            # Azure / security / AI R&D (Herzliya, Haifa, Tel Aviv)
+    type: microsoft
+    location: Israel
+
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Big chip employers this tool can't reach today — each probed live across
   # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/

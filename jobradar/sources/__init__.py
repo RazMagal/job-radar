@@ -4,6 +4,7 @@ from . import (  # noqa: F401
     amazon,
     ashby,
     comeet,
+    eightfold,
     greenhouse,
     jobspy_source,
     lever,
