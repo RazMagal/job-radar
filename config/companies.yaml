@@ -154,6 +154,11 @@ companies:
     uid: "46.00C"
     token: "64C25C864C12E41930326064C25C801930"
 
+  - name: Cellebrite           # digital forensics — embedded Linux, Python/Linux dev, SW
+    type: comeet
+    uid: "C3.00F"
+    token: "3CF130BF3C0B6D16DA1AA9B6D130B16DA"
+
   # Hailo's Comeet board is live but currently only a placeholder ("amazing openings!").
   # Flip enabled: true once it lists real reqs.
   - name: Hailo
