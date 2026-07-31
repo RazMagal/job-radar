@@ -316,6 +316,23 @@ triage from the Actions tab (or the GitHub mobile app) without opening the site.
 
 ---
 
+## Tests
+
+The role-matching engine (`jobradar/matcher.py`) has an acceptance suite in `tests/`,
+authored **blind** from a spec + public contract (`.confepo/spec-test/`) so it encodes
+intended behaviour, not whatever the code happens to do.
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest tests/ -q
+```
+
+30 tests cover title scoring, the location filter, exclusions, and the `--deep`
+description matching (the two-distinct-keyword rule, overlap-collapse, and "title stays
+authoritative — no re-bucketing"). They were mutation-tested to 100% (every injected fault
+in `matcher.py` is caught), so a regression here fails loudly. Add to this suite rather
+than weakening it when the matcher changes.
+
 ## When something breaks
 
 **`check` says a board FAILed** — the token changed. Open the company's careers page and

@@ -1,0 +1,4 @@
+# Dev/test dependencies (not needed to run the scanner itself).
+#   pip install -r requirements-dev.txt
+-r requirements-core.txt
+pytest>=8.0
