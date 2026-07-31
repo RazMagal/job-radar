@@ -9,6 +9,7 @@ from . import (  # noqa: F401
     greenhouse,
     jobspy_source,
     lever,
+    oracle,
     smartrecruiters,
     workday,
 )

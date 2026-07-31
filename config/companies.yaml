@@ -218,6 +218,15 @@ companies:
     type: google
     location: Israel
 
+  # Texas Instruments on Oracle Recruiting Cloud. host/site/location_id were read off the
+  # careers.ti.com hcmRestApi XHR; location_id is the Israel GeographyId facet.
+  - name: Texas Instruments    # Ra'anana chip R&D — design verification, digital design, emulation
+    type: oracle
+    host: edbz.fa.us2.oraclecloud.com
+    site: CX
+    location_id: "300000000361478"
+    job_url: "https://careers.ti.com/job/{id}"
+
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Big chip employers this tool can't reach today — each probed live across
   # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/
