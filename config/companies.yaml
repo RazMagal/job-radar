@@ -12,6 +12,15 @@
 #   workday          <tenant>.<wd>.myworkdayjobs.com/<site>
 #                    e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
 #                    -> tenant: nvidia   wd: wd5   site: NVIDIAExternalCareerSite
+#   comeet           comeet.com/jobs/<slug>/<uid>  -> uid: <uid>  token: <token>
+#                    Comeet needs a per-company `uid` AND `token`. Both are baked into
+#                    the Comeet-hosted page; harvest once, they're stable:
+#                      curl -sL https://www.comeet.com/jobs/<slug>/<uid> \
+#                        | grep -oiE '"(uid|token)": *"[^"]+"'
+#                    The `token` is the company one near the top; the `uid` is the one
+#                    in the URL. QUOTE both in YAML — "76.005" is otherwise read as a
+#                    float. Comeet serves no job description, so its jobs match on title
+#                    only (keep roles.yaml `match_any` rich: vlsi, dft, ...).
 #
 # Workday status codes (verified against a known-good board — they are the opposite
 # way round from what you'd expect):
@@ -96,6 +105,63 @@ companies:
     type: ashby
     board: etched
 
+  # ---- Israeli chip / deep-tech on Comeet -----------------------------------
+  # Where most of the Israeli semiconductor scene actually hosts its jobs. uid+token
+  # were harvested live from each Comeet-hosted page (see the header note); they're
+  # per-company and stable. Comeet returns no description, so these match on title only.
+  - name: Nuvoton               # chip architect, chip design, DV, emulation, SoC validation
+    type: comeet
+    uid: "51.00F"
+    token: "15F57C6DB15FAF8C5757CAF841D6DB"
+
+  - name: Ceva                  # DSP/IP — AI embedded, DSP, verification
+    type: comeet
+    uid: "76.005"
+    token: "67526BE6752D332D33026BE135F033A8"
+
+  - name: NextSilicon          # HPC accelerators — AI compiler, chip, verification
+    type: comeet
+    uid: "18.007"
+    token: "817308A2873102E1845308A308A40B8308A205C"
+
+  - name: proteanTecs          # chip telemetry — silicon, embedded, C++
+    type: comeet
+    uid: "D5.00E"
+    token: "5DE23340029121D562912029122334"
+
+  - name: NeuReality           # AI inference silicon — hardware, AI infra
+    type: comeet
+    uid: "89.002"
+    token: "982428E9820428E390C55924C101C861C86"
+
+  - name: Quantum Machines     # quantum control HW — FPGA, logic design, micro-architect
+    type: comeet
+    uid: "D6.000"
+    token: "6D028E0DA022106D01470221036803D502210"
+
+  - name: Innoviz              # LiDAR SoC — embedded, simulation, hardware
+    type: comeet
+    uid: "52.004"
+    token: "25495012A0104C012A0104C6FCBA40"
+
+  - name: DriveNets            # network cloud — power integrity, GPU SW, system architect
+    type: comeet
+    uid: "72.006"
+    token: "2769D81626762C4E762762C4EC4E1626"
+
+  - name: Xsight Labs          # fabless networking/AI silicon — VLSI, SRAM design, drivers
+    type: comeet
+    uid: "46.00C"
+    token: "64C25C864C12E41930326064C25C801930"
+
+  # Hailo's Comeet board is live but currently only a placeholder ("amazing openings!").
+  # Flip enabled: true once it lists real reqs.
+  - name: Hailo
+    type: comeet
+    uid: "D5.007"
+    token: "5D71D33348F348F1D331D3311852EB85D7BAE"
+    enabled: false
+
   # ---- AI labs --------------------------------------------------------------
   - name: Anthropic
     type: greenhouse
@@ -123,19 +189,26 @@ companies:
     board: lightricks
 
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
-  # These are big Israeli chip employers that this tool cannot reach today. Each was
-  # probed across wd1/wd3/wd5 and every plausible tenant name; none has a public
-  # Workday, Greenhouse, Lever or Ashby board. Supporting them means writing a new
-  # adapter for the ATS named against each.
+  # Big chip employers this tool can't reach today — each probed live across
+  # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/
+  # Ashby/SmartRecruiters/Comeet board. Supporting them means a new adapter for the ATS
+  # named against each.
   #
   #   Qualcomm            Eightfold AI  (app.eightfold.ai/careers?domain=qualcomm.com)
   #   Synopsys            Avature       (synopsys.avature.net)
   #   AMD                 iCIMS         (careers-amd.icims.com)
   #   Arm                 iCIMS         (experienced-arm.icims.com)
   #   Texas Instruments   Oracle HCM    (careers.ti.com)
-  #   Hailo, NextSilicon, Ceva          Comeet — needs a per-company API token
+  #   Vayyar              Workable      (apply.workable.com/vayyar — currently empty)
+  #   Tower Semiconductor SuccessFactors (jobs.towersemi.com — has live Israel roles)
   #   Apple, Western Digital            Workday exists but returns 401 (internal)
   #   Google, Microsoft, Amazon, Nokia  proprietary career sites
+  #
+  # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
+  #   Valens (WordPress), Weebit Nano (own site), Silicom (WP job-openings), Speedata
+  #   (Wix — has live VLSI/DV roles, apply by email), SatixFy (acquired by MDA Space).
+  #   Pliops and Autotalks had Comeet boards now deactivated/empty (Autotalks -> Qualcomm).
+  #   Run:ai is now NVIDIA — covered by the NVIDIA Workday entry above.
   #
   # Until then these are best covered by the LinkedIn/Indeed sweeps below, which do
   # surface Qualcomm and Google Israel postings.

@@ -1,6 +1,14 @@
 """Importing this package registers every built-in source."""
 
-from . import ashby, greenhouse, jobspy_source, lever, smartrecruiters, workday  # noqa: F401
+from . import (  # noqa: F401
+    ashby,
+    comeet,
+    greenhouse,
+    jobspy_source,
+    lever,
+    smartrecruiters,
+    workday,
+)
 from .base import (  # noqa: F401
     DESCRIBERS,
     REGISTRY,
