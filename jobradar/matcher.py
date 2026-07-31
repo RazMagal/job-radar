@@ -1,8 +1,10 @@
 """Scores each posting against your role profiles.
 
-Matching is title-only and deliberately dumb-but-predictable: ATS list endpoints
-don't return descriptions, and fetching every description would mean thousands of
-extra requests per scan. A keyword in the title is a far stronger signal anyway.
+By default matching is title-only and deliberately dumb-but-predictable: ATS list
+endpoints don't return descriptions, and a keyword in the title is the strongest signal.
+Under ``scan --deep`` the job description is also scanned (see ``score``), which catches
+postings whose title hides the role — a "VLSI Engineer" or "Systems Engineer" that is
+really chip design or verification.
 """
 
 from __future__ import annotations
@@ -15,6 +17,14 @@ from .models import Job, normalize
 
 TITLE_HIT = 3  # a primary keyword in the title
 BOOST_HIT = 1  # a supporting keyword ("uvm", "asic", ...)
+DESC_HIT = 2  # a primary keyword found in the body but not the title (--deep only)
+DESC_MIN_HITS = 2  # ...and the body must carry at least this many distinct ones to count
+
+
+def _distinct(keywords: list[str]) -> list[str]:
+    """Drop any keyword that is a substring of another matched one, so overlapping
+    phrases ("verification" vs "design verification") count as one signal, not two."""
+    return [kw for kw in keywords if not any(kw != other and kw in other for other in keywords)]
 
 
 @dataclass
@@ -70,8 +80,22 @@ def _location_ok(job: Job, settings: Settings) -> bool:
     return any(want in loc for want in settings.locations_any)
 
 
-def score(job: Job, settings: Settings, profiles: list[Profile]) -> Job | None:
-    """Return the job annotated with its best-matching profile, or None if it's out."""
+def score(
+    job: Job, settings: Settings, profiles: list[Profile], use_description: bool = False
+) -> Job | None:
+    """Return the job annotated with its best-matching profile, or None if it's out.
+
+    Two passes. The title pass is authoritative and unchanged from a plain scan: a job
+    the title already classifies keeps that role. Only if the title classifies it into
+    *nothing* does the ``--deep`` body pass run — so the description can pull in a
+    posting the title hid ("VLSI Engineer", "Member of Technical Staff") but can never
+    *re-bucket* one the title already placed (a chip role whose blurb name-drops ML must
+    stay chip). The body pass needs a clear signal — ``DESC_MIN_HITS`` distinct,
+    non-overlapping primary keywords, none of them excluded — so a stray mention in a
+    long description can't drag an unrelated job in. Body-sourced hits are prefixed "~"
+    in ``job.matched``. Only sources whose listing returns descriptions benefit
+    (greenhouse/ashby/lever/jobspy); Workday stays title-only.
+    """
     title = normalize(job.title)
 
     if any(bad in title for bad in settings.exclude_titles):
@@ -79,29 +103,50 @@ def score(job: Job, settings: Settings, profiles: list[Profile]) -> Job | None:
     if not _location_ok(job, settings):
         return None
 
+    # --- pass 1: title only (the whole story for a plain scan) ---------------------
     best: tuple[int, list[str], Profile] | None = None
     for prof in profiles:
         if any(bad in title for bad in prof.exclude):
             continue
-
         hits = [kw for kw in prof.match_any if kw in title]
         if not hits:
             continue
         boosts = [kw for kw in prof.boost if kw in title]
         total = len(hits) * TITLE_HIT + len(boosts) * BOOST_HIT
-
         if best is None or total > best[0]:
             best = (total, hits + boosts, prof)
+    if best is not None and best[0] >= settings.min_score:
+        total, matched, prof = best
+        job.role, job.role_label, job.score, job.matched = prof.id, prof.label, total, matched
+        return job
 
-    if best is None or best[0] < settings.min_score:
+    # --- pass 2: body fallback for a title the pass above left unclassified --------
+    if not (use_description and job.description):
         return None
+    desc = normalize(job.description)
+    best = None
+    for prof in profiles:
+        if any(bad in title for bad in prof.exclude) or any(bad in desc for bad in prof.exclude):
+            continue
+        title_hits = [kw for kw in prof.match_any if kw in title]
+        body = _distinct([kw for kw in prof.match_any if kw in desc and kw not in title_hits])
+        if len(body) < DESC_MIN_HITS:
+            continue
+        boosts = [kw for kw in prof.boost if kw in title]
+        total = len(title_hits) * TITLE_HIT + len(boosts) * BOOST_HIT + len(body) * DESC_HIT
+        matched = title_hits + boosts + [f"~{kw}" for kw in body]
+        if best is None or total > best[0]:
+            best = (total, matched, prof)
+    if best is not None and best[0] >= settings.min_score:
+        total, matched, prof = best
+        job.role, job.role_label, job.score, job.matched = prof.id, prof.label, total, matched
+        return job
+    return None
 
-    total, matched, prof = best
-    job.role, job.role_label, job.score, job.matched = prof.id, prof.label, total, matched
-    return job
 
-
-def match_all(jobs, settings: Settings, profiles: list[Profile]) -> list[Job]:
-    out = [m for j in jobs if (m := score(j, settings, profiles))]
+def match_all(
+    jobs, settings: Settings, profiles: list[Profile], use_description: bool = False
+) -> list[Job]:
+    out = [m for j in jobs if (m := score(j, settings, profiles, use_description))]
     out.sort(key=lambda j: (-j.score, j.posted_at and -int(j.posted_at.replace("-", "")) or 0))
     return out

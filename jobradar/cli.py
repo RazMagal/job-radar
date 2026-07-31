@@ -172,7 +172,9 @@ def cmd_scan(args) -> int:
 
     print(f"Scanning {len(companies)} board(s)...{' (deep)' if args.deep else ''}")
     raw_jobs, errors = fetch_all(companies, deep=args.deep)
-    matches = match_all(raw_jobs, settings, profiles)
+    # --deep also feeds the fetched descriptions into role matching, widening the net to
+    # postings whose title hides the role (a "VLSI Engineer" that's really chip design).
+    matches = match_all(raw_jobs, settings, profiles, use_description=args.deep)
 
     # De-duplicate: the same posting can arrive from several sources.
     unique: dict[str, Job] = {}

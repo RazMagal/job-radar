@@ -1,8 +1,16 @@
 # What counts as a job worth seeing.
 #
-# Matching runs on the job TITLE only (ATS list endpoints don't return descriptions).
-# Score = 3 per `match_any` hit + 1 per `boost` hit. A job needs `min_score` to show up,
-# so by default at least one primary keyword must appear in the title.
+# Score = 3 per `match_any` keyword in the TITLE + 1 per `boost` keyword. A job needs
+# `min_score` to show up, so by default at least one primary keyword must appear in the
+# title.
+#
+# `scan --deep` additionally scans the job DESCRIPTION: two or more distinct `match_any`
+# keywords in the body (worth 2 each) can pull in a posting whose title gave nothing away
+# — e.g. a "VLSI Engineer" or "Systems Engineer" role that is really chip design or
+# verification. That only works for sources whose listing returns descriptions
+# (greenhouse/ashby/lever/jobspy); Workday stays title-only. So keep `match_any` full of
+# the real role vocabulary, not just the exact job titles — it doubles as the body-scan
+# dictionary.
 
 settings:
   # Keep only jobs whose location contains one of these. Substring, case-insensitive.
@@ -88,15 +96,31 @@ profiles:
     match_any:
       - rtl design
       - asic design
+      - asic engineer
       - digital design
       - logic design
       - physical design
       - soc design
+      - vlsi                 # "VLSI Engineer" et al. — often the title for a DV/PD role
+      - analog design
+      - mixed signal         # "mixed-signal" normalises to this too
+      - dft                  # design-for-test
+      - place and route
+      - microarchitecture
+      - micro architecture   # hyphenated form normalises to this
+      - cpu architect
+      - gpu architect
+      - silicon design
+      - custom layout
       - fpga
     boost:
       - systemverilog
       - verilog
       - vhdl
+      - synthesis
+      - timing
+      - floorplan
+      - pnr
       - cpu
       - gpu
       - npu

@@ -140,6 +140,8 @@
     font-size: 11px; padding: 1px 6px; border-radius: 4px;
     background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
   }
+  /* matched in the job description rather than the title (deep scan) */
+  .tag-body { border-style: dashed; font-style: italic; }
   /* which CV to send — an action pill, distinct from matched-keyword .tag */
   .cv {
     font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px;
@@ -367,7 +369,13 @@ const META = __META_JSON__;
   }
 
   function card(j) {
-    var tags = (j.matched || []).map(function (m) { return '<span class="tag">' + esc(m) + "</span>"; }).join("");
+    var tags = (j.matched || []).map(function (m) {
+      var body = String(m).charAt(0) === "~";           // "~kw" => matched in the description
+      var label = body ? String(m).slice(1) : m;
+      return '<span class="tag' + (body ? " tag-body" : "") + '"' +
+        (body ? ' title="matched in the job description, not the title"' : "") +
+        ">" + esc(label) + "</span>";
+    }).join("");
     var cv = j.cv ? '<span class="cv" title="CV to send for this role"><span class="cv-k">send:</span> ' + esc(j.cv) + "</span>" : "";
     // deep scans attach the terms that drove the pick; blank (or no CV) => nothing
     var reason = j.cv && j.cv_reason ? String(j.cv_reason).trim() : "";
