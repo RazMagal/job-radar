@@ -1,6 +1,7 @@
 """Importing this package registers every built-in source."""
 
 from . import (  # noqa: F401
+    amazon,
     ashby,
     comeet,
     greenhouse,

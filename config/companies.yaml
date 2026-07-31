@@ -193,6 +193,14 @@ companies:
     type: greenhouse
     board: lightricks
 
+  # ---- Big tech via their own public career APIs (not a third-party ATS) -----
+  # These run their own careers sites, but each exposes a public JSON search with a
+  # server-side location filter — so we can pull just the Israel roles, same as an ATS.
+  - name: Amazon               # Annapurna Labs silicon (Graviton/Trainium) + AWS + Stores
+    type: amazon
+    location: Israel
+    country: ISR
+
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Big chip employers this tool can't reach today — each probed live across
   # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/
