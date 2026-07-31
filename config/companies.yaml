@@ -228,20 +228,21 @@ companies:
     job_url: "https://careers.ti.com/job/{id}"
 
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
-  # Big chip employers this tool can't reach today — each probed live across
-  # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/
-  # Ashby/SmartRecruiters/Comeet board. Supporting them means a new adapter for the ATS
-  # named against each.
+  # Probed live and NOT worth an adapter today (empty, HTML-only, or auth-gated):
   #
-  #   Qualcomm            Eightfold AI  (app.eightfold.ai/careers?domain=qualcomm.com)
-  #   Synopsys            Avature       (synopsys.avature.net)
-  #   AMD                 iCIMS         (careers-amd.icims.com)
-  #   Arm                 iCIMS         (experienced-arm.icims.com)
-  #   Texas Instruments   Oracle HCM    (careers.ti.com)
-  #   Vayyar              Workable      (apply.workable.com/vayyar — currently empty)
-  #   Tower Semiconductor SuccessFactors (jobs.towersemi.com — has live Israel roles)
-  #   Apple, Western Digital            Workday exists but returns 401 (internal)
-  #   Google, Microsoft, Amazon, Nokia  proprietary career sites
+  #   AMD        careers.amd.com/api/jobs is clean public JSON, but 0 Israel reqs right
+  #              now (verified via its country facet). Add an `amd` adapter when that
+  #              changes — the API is trivial; it's just empty for IL currently.
+  #   Arm        careers.arm.com/search-jobs/Israel — HTML only, ~2 Ra'anana verification
+  #              roles; no clean JSON, so left out (this tool avoids HTML scraping).
+  #   Synopsys   synopsys.avature.net — Avature, HTML only AND 0 Israel reqs on that
+  #              portal right now.
+  #   Tower      jobs.towersemi.com -> SuccessFactors (career2.successfactors.eu, company
+  #              towersemic) — session/CSRF-gated DWR/SAPUI5, no public JSON; needs a
+  #              headless browser. ~77 reqs total, Migdal Haemek ("MH") facet.
+  #   Vayyar     apply.workable.com/vayyar — Workable (public API exists) but 0 openings.
+  #   Nokia      Avature — not yet probed.
+  #   Apple, Western Digital   Workday exists but returns 401 (internal).
   #
   # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
   #   Valens (WordPress), Weebit Nano (own site), Silicom (WP job-openings), Speedata
@@ -249,8 +250,7 @@ companies:
   #   Pliops and Autotalks had Comeet boards now deactivated/empty (Autotalks -> Qualcomm).
   #   Run:ai is now NVIDIA — covered by the NVIDIA Workday entry above.
   #
-  # Until then these are best covered by the LinkedIn/Indeed sweeps below, which do
-  # surface Qualcomm and Google Israel postings.
+  # These are otherwise best covered by the LinkedIn/Indeed sweeps below.
 
   # ---- LinkedIn + Indeed sweeps via jobspy ----------------------------------
   # Installed by default via requirements.txt. Verified working for Israel on

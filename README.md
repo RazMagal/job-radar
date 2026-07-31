@@ -13,7 +13,11 @@ roles under a pile of unrelated engineering titles.
    SmartRecruiters, Workday, Comeet) rather than scraping careers pages. That's where the
    postings actually live, it returns clean JSON, and it doesn't break every time
    someone reskins a website. Comeet in particular is where most of the Israeli chip
-   scene hosts (Nuvoton, Ceva, NextSilicon, Quantum Machines, proteanTecs, …).
+   scene hosts (Nuvoton, Ceva, NextSilicon, Quantum Machines, proteanTecs, …). Several
+   big-tech employers that run their own careers site are read the same way, through
+   their public search APIs: **Amazon** (Annapurna Labs silicon), **Google**,
+   **Microsoft**, **Qualcomm**, and **Texas Instruments** (Oracle) — all location-filtered
+   to Israel server-side.
 2. **Match** — scores each title against the role profiles in `config/roles.yaml`
    and filters by location. `scan --deep` also reads job *descriptions*, so a posting
    whose title hides the role — a "VLSI Engineer" or "Systems Engineer" that's really

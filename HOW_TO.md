@@ -202,6 +202,25 @@ Comeet serves no job description, so its jobs are matched on **title only** — 
 Workday without a describer. That's why `roles.yaml` keeps a rich `match_any` vocabulary
 (vlsi, dft, physical design, …) rather than just exact job titles.
 
+### Big-tech career APIs
+
+Some employers run their own careers site but expose a public JSON search — read the same
+way as an ATS, each with a fixed `type` (no token to harvest):
+
+| `type:` | who | notes |
+|---|---|---|
+| `amazon` | Amazon (Annapurna Labs silicon, AWS) | `location`/`country` overridable |
+| `qualcomm`, `microsoft` | Qualcomm, Microsoft | shared Eightfold "PCSX" API (`eightfold.py`) |
+| `google` | Google | careers-page `batchexecute` RPC — **fragile**: a Google deploy can rotate the RPC id (`check` catches it; re-harvest `RPC` in `google.py`) |
+| `oracle` | Texas Instruments | Oracle Recruiting Cloud; needs `host`, `site`, `location_id`, `job_url` |
+
+To point the `oracle` type at another Oracle-Recruiting employer, load their careers page,
+watch the `hcmRestApi/...recruitingCEJobRequisitions` XHR, and copy the `host`, `siteNumber`
+and the Israel `selectedLocationsFacet` id into config.
+
+If one of these fails **only in CI** (a datacenter-IP block — most likely `google`), mark
+that entry `ci: false` so it runs locally only, like the LinkedIn/Indeed sweeps.
+
 ### Lever regions
 
 Lever has a separate EU data region. An EU-hosted board 404s on the US endpoint, which

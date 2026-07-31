@@ -83,11 +83,32 @@ Nuvoton, Ceva, NextSilicon, proteanTecs, NeuReality, Quantum Machines, Innoviz, 
 (Hailo parked — placeholder board). The API serves no description, so Comeet jobs are
 title-only.
 
+## Big-tech career APIs — SHIPPED
+
+Employers that run their own careers site instead of a third-party ATS, but expose a
+public JSON search we read the same way (all filtered to Israel server-side):
+
+- **Amazon** (`amazon.py`) — amazon.jobs search.json; Annapurna Labs silicon + AWS. List
+  carries descriptions, so `--deep` works.
+- **Qualcomm + Microsoft** (`eightfold.py`) — Eightfold "PCSX" `/api/pcsx/search`, one
+  adapter parameterized by host+domain; per-job describer for `--deep`, like Workday.
+- **Google** (`google.py`) — the careers-page `batchexecute` RPC (keyless positional
+  arrays). The most fragile source: a Google deploy can rotate the `rpcids` build id, so
+  parsing raises loudly (check catches it) and re-harvesting `RPC` is the fix.
+- **Texas Instruments** (`oracle.py`) — generic Oracle Recruiting Cloud reader
+  (`recruitingCEJobRequisitions` + a location `finder`); reusable for other ORC employers
+  via `host`/`site`/`location_id`.
+
+Still out (see the bottom of `config/companies.yaml` for the live-probed detail): **AMD**
+(clean JSON but 0 Israel reqs right now — add when it fills), **Arm** (HTML-only, ~2 IL
+verification roles), **Synopsys** (Avature, HTML-only + 0 IL), **Tower** (SuccessFactors,
+session/CSRF-gated DWR — needs a headless browser), **Vayyar** (Workable, empty).
+
 ## Smaller things
 
-- **More ATS adapters.** Remaining misses documented at the bottom of
-  `config/companies.yaml`: Eightfold (Qualcomm), Avature (Synopsys), iCIMS (AMD, Arm),
-  Oracle HCM (TI), Workable (Vayyar). All look scrapeable but each needs its own reader.
+- **Alerting on IP blocks in CI.** The big-tech APIs (especially `google`) may be blocked
+  from GitHub Actions datacenter IPs even though they work locally; if so, mark them
+  `ci: false`. Worth surfacing a datacenter-block distinctly from a genuine empty board.
 - **Dedup across sources.** The same job from LinkedIn and from the company's ATS has
   different titles and location spellings (one Hebrew, one English), so the fingerprint
   differs and it shows up twice.
