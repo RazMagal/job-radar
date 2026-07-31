@@ -211,6 +211,13 @@ companies:
     type: microsoft
     location: Israel
 
+  # Google has no clean API left — this reads the careers-page batchexecute RPC. It's the
+  # most fragile source (a Google deploy can rotate the RPC id, which `check` will catch);
+  # worth it for ~100 IL roles incl. silicon validation and CPU design verification.
+  - name: Google               # silicon validation, CPU DV, TPU, SoC power + SWE/AI
+    type: google
+    location: Israel
+
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Big chip employers this tool can't reach today — each probed live across
   # wd1/wd3/wd5 and every plausible token; none has a public Workday/Greenhouse/Lever/
