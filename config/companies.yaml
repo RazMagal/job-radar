@@ -227,6 +227,16 @@ companies:
     location_id: "300000000361478"
     job_url: "https://careers.ti.com/job/{id}"
 
+  # ---- Israeli defense / aerospace primes ------------------------------------
+  # Elbit runs its own Next.js careers site (elbitsystemscareer.com) that hydrates from a
+  # single static JSON blob — /cron/jobs.json, ~680 open reqs WITH full descriptions, so
+  # `scan --deep` catches the RF / DSP / FPGA / HW-verification roles whose title is
+  # generic. Every posting on that portal is an Israel role (the JSON's `area` — North /
+  # Center / Sharon / Shfela / South / Haifa / Jerusalem — is kept as location context).
+  # No token, no auth; the detail page is /job/?jid={jobId}.
+  - name: Elbit Systems        # radar/EW/C4I/avionics — RF, DSP, FPGA, HW verification (Netanya/Haifa/Holon/Ra'anana)
+    type: elbit
+
   # ---- Wired up but currently empty/thin (ready for when they post IL roles) --
   # Added so a future scan picks them up automatically. All verified live: the adapter
   # resolves; there just aren't (m)any Israel roles right now. `check` will show these
@@ -260,8 +270,18 @@ companies:
   #   Tower      jobs.towersemi.com -> SuccessFactors (career2.successfactors.eu, company
   #              towersemic) — session/CSRF-gated DWR/SAPUI5, no public JSON; needs a
   #              headless browser. ~77 reqs total, Migdal Haemek ("MH") facet.
+  #   IAI        jobs.iai.co.il and Rafael (rafael.co.il/career) both sit behind a Reblaze
+  #   Rafael     WAF JS-challenge ("rbzns"/kramericaindustries.ac_v2.lib.js) — plain HTTP
+  #              gets a 552-byte challenge stub, never the jobs. Needs a headless browser
+  #              that runs the challenge, same class as Tower.
+  #   Elta       IAI subsidiary; no separate public portal — its reqs live on the same
+  #              Reblaze-walled IAI jobs site. (Elbit, the comparable prime, IS reachable —
+  #              see the defense/aerospace section above.)
   #   Nokia      Avature — not yet probed (the `avature` type would likely fit).
   #   Apple, Western Digital   Workday exists but returns 401 (internal).
+  #
+  #   The Reblaze-walled primes (IAI/Rafael/Elta) still surface on the LinkedIn/Indeed
+  #   sweeps below — that's the practical channel for their RF/DSP/FPGA/verification roles.
   #
   # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
   #   Valens (WordPress), Weebit Nano (own site), Silicom (WP job-openings), Speedata
@@ -304,6 +324,36 @@ companies:
     ci: false
     sites: [indeed, linkedin]
     search_term: linux embedded developer
+    location: Israel
+    country: israel
+    results: 50
+    hours_old: 336
+
+  - name: LinkedIn/Indeed — RF
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin]
+    search_term: RF engineer
+    location: Israel
+    country: israel
+    results: 50
+    hours_old: 336
+
+  - name: LinkedIn/Indeed — DSP / signal processing
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin]
+    search_term: DSP signal processing engineer
+    location: Israel
+    country: israel
+    results: 50
+    hours_old: 336
+
+  - name: LinkedIn/Indeed — FPGA
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin]
+    search_term: FPGA engineer
     location: Israel
     country: israel
     results: 50

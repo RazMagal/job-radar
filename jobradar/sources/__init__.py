@@ -8,6 +8,7 @@ from . import (  # noqa: F401
     avature,
     comeet,
     eightfold,
+    elbit,
     google,
     greenhouse,
     jobspy_source,

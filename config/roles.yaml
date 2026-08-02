@@ -75,6 +75,8 @@ profiles:
       - functional verification
       - silicon validation
       - post silicon
+      - hw verification      # Elbit et al. title HW verification/validation this way
+      - hardware verification
       - verification
     boost:
       - uvm
@@ -84,6 +86,7 @@ profiles:
       - formal
       - rtl
       - emulation
+      - fpga
       - senior
       - staff
     exclude:
@@ -126,6 +129,41 @@ profiles:
       - npu
       - senior
       - staff
+
+  - id: rf-dsp
+    label: RF / DSP
+    match_any:
+      - rf engineer
+      - rf design
+      - radio frequency
+      - rfic                 # "RFIC"
+      - rf ic                # "RF IC" normalises here
+      - microwave
+      - antenna
+      - electromagnetic      # e.g. "RF Electromagnetic Engineer"
+      - radar
+      - signal processing    # covers "digital signal processing" too
+      - dsp                  # "DSP Engineer", "DSP/FPGA"
+      - baseband
+      - modem
+      - transceiver
+    boost:
+      - fpga
+      - matlab
+      - simulink
+      - phased array
+      - mmwave
+      - millimeter wave
+      - beamforming
+      - 5g
+      - wireless
+      - senior
+      - staff
+    exclude:
+      # radar/RF appear in non-engineering titles — keep those out.
+      - marketing
+      - business development
+      - sales
 
   - id: linux
     label: Linux / Embedded

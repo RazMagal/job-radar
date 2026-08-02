@@ -215,6 +215,7 @@ way as an ATS, each with a fixed `type` (no token to harvest):
 | `oracle` | Texas Instruments | Oracle Recruiting Cloud; needs `host`, `site`, `location_id`, `job_url` |
 | `workable` | Vayyar | `board` = the Workable account slug |
 | `amd` | AMD | no country filter — pages the whole board and keeps `country_code == IL` (heavy; `ci: false`) |
+| `elbit` | Elbit Systems | own Next.js careers site — one static blob at `/cron/jobs.json` (~680 reqs **with descriptions**); all Israel, detail page `/job/?jid={id}` |
 | `arm`, `avature` | Arm, Synopsys | **HTML scrapers** (no JSON feed) — narrow and isolated, `ci: false` |
 
 To point the `oracle` type at another Oracle-Recruiting employer, load their careers page,
