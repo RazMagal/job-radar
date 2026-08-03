@@ -11,6 +11,12 @@
 # (greenhouse/ashby/lever/jobspy); Workday stays title-only. So keep `match_any` full of
 # the real role vocabulary, not just the exact job titles — it doubles as the body-scan
 # dictionary.
+#
+# Some boards post in HEBREW (IAI, and the Indeed-IL sweeps), so each profile also carries
+# Hebrew keywords (אימות, מכ"ם, עיבוד אותות, קושחה, אלגוריתמ, …) next to the English ones.
+# Israeli titles keep the Latin acronyms (RF/FPGA/DSP/VLSI) inline, so those match as-is.
+# The English-only boards are unaffected. `normalize()` strips punctuation, so a term like
+# מכ"ם is matched on its letters — that's fine, it stays unambiguous.
 
 settings:
   # Keep only jobs whose location contains one of these. Substring, case-insensitive.
@@ -62,6 +68,9 @@ settings:
     - recruiter
     - sales
     - account executive
+    # Hebrew equivalents, for the Hebrew boards (IAI, Indeed-IL):
+    - סטודנט          # student
+    - מתמחה           # intern / trainee
 
   min_score: 3
 
@@ -78,6 +87,8 @@ profiles:
       - hw verification      # Elbit et al. title HW verification/validation this way
       - hardware verification
       - verification
+      - אימות               # (Hebrew) verification — "מהנדס/ת אימות"
+      - וריפיקציה           # (Hebrew) verification, transliterated
     boost:
       - uvm
       - systemverilog
@@ -116,6 +127,8 @@ profiles:
       - silicon design
       - custom layout
       - fpga
+      - תכן לוגי             # (Hebrew) logic design — "תכן לוגי ל-FPGA"
+      - תכן דיגיטלי          # (Hebrew) digital design
     boost:
       - systemverilog
       - verilog
@@ -147,6 +160,11 @@ profiles:
       - baseband
       - modem
       - transceiver
+      - עיבוד אותות          # (Hebrew) signal processing
+      - רדאר                 # (Hebrew) radar
+      - 'מכ"ם'               # (Hebrew) radar (military term) — quoted: the " is literal
+      - אנטנה                # (Hebrew) antenna
+      - מיקרוגל              # (Hebrew) microwave
     boost:
       - fpga
       - matlab
@@ -176,6 +194,10 @@ profiles:
       - firmware
       - systems engineer
       - bsp
+      - לינוקס               # (Hebrew) linux
+      - קושחה                # (Hebrew) firmware
+      - מוטמע                # (Hebrew) embedded
+      - משובץ                # (Hebrew) embedded (alt. spelling)
     boost:
       - c++
       - rust
@@ -199,6 +221,11 @@ profiles:
       - mlops
       - computer vision
       - nlp
+      - אלגוריתמ             # (Hebrew) stem of algorithm* — "אלגוריתמאי/ת", "אלגוריתמים"
+      - ראייה ממוחשבת        # (Hebrew) computer vision
+      - עיבוד תמונה          # (Hebrew) image processing
+      - למידת מכונה          # (Hebrew) machine learning
+      - בינה מלאכותית        # (Hebrew) artificial intelligence
     boost:
       - pytorch
       - llm
