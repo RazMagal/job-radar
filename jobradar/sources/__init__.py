@@ -15,6 +15,7 @@ from . import (  # noqa: F401
     jobspy_source,
     lever,
     oracle,
+    rafael,
     smartrecruiters,
     workable,
     workday,

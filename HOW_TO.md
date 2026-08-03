@@ -217,6 +217,7 @@ way as an ATS, each with a fixed `type` (no token to harvest):
 | `amd` | AMD | no country filter — pages the whole board and keeps `country_code == IL` (heavy; `ci: false`) |
 | `elbit` | Elbit Systems | own Next.js careers site — one static blob at `/cron/jobs.json` (~680 reqs **with descriptions**); all Israel, detail page `/job/?jid={id}` |
 | `iai` | Israel Aerospace Industries (+ Elta) | WordPress behind a Reblaze WAF, but the static jobs feed it loads isn't gated — plain GET works (~470 reqs, **Hebrew**, with descriptions). Detail page `/job/{id}` |
+| `rafael` | Rafael Advanced Defense Systems | `/api/jobs` (~320 reqs, **Hebrew**, title-only) *is* behind the Reblaze WAF, so this board **drives a headless browser** (Playwright + system Chrome) to pass the challenge. `ci: false`; optional `playwright` dep — fails loudly if absent. `browser_channel: chromium` to use a managed browser |
 | `arm`, `avature` | Arm, Synopsys | **HTML scrapers** (no JSON feed) — narrow and isolated, `ci: false` |
 
 To point the `oracle` type at another Oracle-Recruiting employer, load their careers page,

@@ -19,3 +19,11 @@ python-jobspy==1.1.82
 # pure-Python. pypdf handles text PDFs (scanned/image PDFs need OCR, unsupported).
 pypdf>=4.0
 python-docx>=1.1
+
+# ONLY for the Rafael board (type: rafael, ci: false). Its jobs API is behind a Reblaze
+# WAF, so that one adapter drives a real browser to pass the challenge. Left COMMENTED —
+# it pulls a browser driver and is useless without a Chrome/Chromium. Uncomment (and use
+# your system Chrome via channel="chrome", or run `playwright install chromium`) only if
+# you want Rafael; every other board works without it, and Rafael fails loudly if it's
+# missing rather than breaking the run.
+# playwright>=1.50

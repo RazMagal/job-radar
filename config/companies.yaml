@@ -246,6 +246,15 @@ companies:
   - name: IAI                  # Israel Aerospace Industries (+ Elta) — RF, FPGA, DSP, אימות, מכ"ם
     type: iai
 
+  # Rafael's /api/jobs (~320 reqs) IS behind the Reblaze wall, so this one board drives a
+  # real browser (Playwright + system Chrome) to pass the challenge — hence `ci: false` and
+  # the optional playwright dep (see requirements.txt). Title-only, Hebrew. If Playwright
+  # isn't installed it fails loudly for just this board; everything else keeps working.
+  # Set `browser_channel: chromium` to use a Playwright-managed browser instead of Chrome.
+  - name: Rafael               # Rafael Advanced Defense Systems — FPGA/ASIC, RFIC, וריפיקציה, אלגוריתמים (Haifa)
+    type: rafael
+    ci: false
+
   # ---- Wired up but currently empty/thin (ready for when they post IL roles) --
   # Added so a future scan picks them up automatically. All verified live: the adapter
   # resolves; there just aren't (m)any Israel roles right now. `check` will show these
@@ -276,11 +285,6 @@ companies:
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Probed live and still out — no public JSON/HTML we can consume today:
   #
-  #   Rafael     career.rafael.co.il is behind a Reblaze WAF ("rbzns") and — unlike IAI —
-  #              the wall DOES gate its jobs API (career.rafael.co.il/api/jobs): plain HTTP
-  #              gets a 561-byte challenge stub. Reachable only via a headless browser that
-  #              runs the challenge (~320 Hebrew reqs). Not wired up yet — LinkedIn/Indeed
-  #              is the practical channel meanwhile.
   #   Tower      jobs live in legacy SuccessFactors (career2.successfactors.eu, company
   #              towersemic) behind the AjaxService — session cookie + CSRF `ajaxSecKey`,
   #              no public JSON. The WordPress shell (careers.towersemi.com) just links out
@@ -288,9 +292,9 @@ companies:
   #   Nokia      Avature — not yet probed (the `avature` type would likely fit).
   #   Apple, Western Digital   Workday exists but returns 401 (internal).
   #
-  #   (IAI/Elta WERE listed here as Reblaze-walled — they're now reachable via IAI's static
-  #   feed; see the defense/aerospace section above. Rafael's wall gates the API, so it's
-  #   still out.)
+  #   (IAI/Elta and Rafael WERE listed here as Reblaze-walled. Both are now wired up in the
+  #   defense/aerospace section: IAI via its ungated static feed, Rafael via a browser-backed
+  #   adapter — see above. Only the entries above remain genuinely out.)
   #
   # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
   #   Valens (WordPress), Weebit Nano (own site), Silicom (WP job-openings), Speedata
