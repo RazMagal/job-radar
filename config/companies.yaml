@@ -237,6 +237,15 @@ companies:
   - name: Elbit Systems        # radar/EW/C4I/avionics — RF, DSP, FPGA, HW verification (Netanya/Haifa/Holon/Ra'anana)
     type: elbit
 
+  # IAI's careers site (jobs.iai.co.il) is WordPress behind a Reblaze WAF, but the WAF
+  # only challenges the page nav — NOT the static jobs feed it loads. So a plain GET of
+  # that asset returns all ~470 reqs (see jobradar/sources/iai.py). Content is HEBREW,
+  # which is why roles.yaml carries Hebrew keywords (אימות/מכ"ם/עיבוד אותות/…) alongside
+  # the Latin acronyms (RF/FPGA/DSP) that Israeli titles keep inline. Elta (IAI's radar/EW
+  # subsidiary) posts into this same feed.
+  - name: IAI                  # Israel Aerospace Industries (+ Elta) — RF, FPGA, DSP, אימות, מכ"ם
+    type: iai
+
   # ---- Wired up but currently empty/thin (ready for when they post IL roles) --
   # Added so a future scan picks them up automatically. All verified live: the adapter
   # resolves; there just aren't (m)any Israel roles right now. `check` will show these
@@ -267,21 +276,21 @@ companies:
   # ---- Known-unreachable, documented so nobody re-tries them ----------------
   # Probed live and still out — no public JSON/HTML we can consume today:
   #
-  #   Tower      jobs.towersemi.com -> SuccessFactors (career2.successfactors.eu, company
-  #              towersemic) — session/CSRF-gated DWR/SAPUI5, no public JSON; needs a
-  #              headless browser. ~77 reqs total, Migdal Haemek ("MH") facet.
-  #   IAI        jobs.iai.co.il and Rafael (rafael.co.il/career) both sit behind a Reblaze
-  #   Rafael     WAF JS-challenge ("rbzns"/kramericaindustries.ac_v2.lib.js) — plain HTTP
-  #              gets a 552-byte challenge stub, never the jobs. Needs a headless browser
-  #              that runs the challenge, same class as Tower.
-  #   Elta       IAI subsidiary; no separate public portal — its reqs live on the same
-  #              Reblaze-walled IAI jobs site. (Elbit, the comparable prime, IS reachable —
-  #              see the defense/aerospace section above.)
+  #   Rafael     career.rafael.co.il is behind a Reblaze WAF ("rbzns") and — unlike IAI —
+  #              the wall DOES gate its jobs API (career.rafael.co.il/api/jobs): plain HTTP
+  #              gets a 561-byte challenge stub. Reachable only via a headless browser that
+  #              runs the challenge (~320 Hebrew reqs). Not wired up yet — LinkedIn/Indeed
+  #              is the practical channel meanwhile.
+  #   Tower      jobs live in legacy SuccessFactors (career2.successfactors.eu, company
+  #              towersemic) behind the AjaxService — session cookie + CSRF `ajaxSecKey`,
+  #              no public JSON. The WordPress shell (careers.towersemi.com) just links out
+  #              to it. Doable as a 2-step session scrape, but fragile; not worth it yet.
   #   Nokia      Avature — not yet probed (the `avature` type would likely fit).
   #   Apple, Western Digital   Workday exists but returns 401 (internal).
   #
-  #   The Reblaze-walled primes (IAI/Rafael/Elta) still surface on the LinkedIn/Indeed
-  #   sweeps below — that's the practical channel for their RF/DSP/FPGA/verification roles.
+  #   (IAI/Elta WERE listed here as Reblaze-walled — they're now reachable via IAI's static
+  #   feed; see the defense/aerospace section above. Rafael's wall gates the API, so it's
+  #   still out.)
   #
   # Israeli chip firms whose jobs live only on their own site (no third-party ATS):
   #   Valens (WordPress), Weebit Nano (own site), Silicom (WP job-openings), Speedata

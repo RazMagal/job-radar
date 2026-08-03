@@ -216,6 +216,7 @@ way as an ATS, each with a fixed `type` (no token to harvest):
 | `workable` | Vayyar | `board` = the Workable account slug |
 | `amd` | AMD | no country filter — pages the whole board and keeps `country_code == IL` (heavy; `ci: false`) |
 | `elbit` | Elbit Systems | own Next.js careers site — one static blob at `/cron/jobs.json` (~680 reqs **with descriptions**); all Israel, detail page `/job/?jid={id}` |
+| `iai` | Israel Aerospace Industries (+ Elta) | WordPress behind a Reblaze WAF, but the static jobs feed it loads isn't gated — plain GET works (~470 reqs, **Hebrew**, with descriptions). Detail page `/job/{id}` |
 | `arm`, `avature` | Arm, Synopsys | **HTML scrapers** (no JSON feed) — narrow and isolated, `ci: false` |
 
 To point the `oracle` type at another Oracle-Recruiting employer, load their careers page,

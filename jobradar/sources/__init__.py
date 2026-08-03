@@ -11,6 +11,7 @@ from . import (  # noqa: F401
     elbit,
     google,
     greenhouse,
+    iai,
     jobspy_source,
     lever,
     oracle,
