@@ -304,69 +304,80 @@ companies:
   #
   # These are otherwise best covered by the LinkedIn/Indeed sweeps below.
 
-  # ---- LinkedIn + Indeed sweeps via jobspy ----------------------------------
+  # ---- LinkedIn + Indeed + Google-for-Jobs sweeps via jobspy ----------------
   # Installed by default via requirements.txt. Verified working for Israel on
-  # 2026-07-20 from a residential IP: both boards returned real, on-topic Israeli
-  # postings. LinkedIn blocks datacenter IPs, so these are `ci: false` — run them
-  # locally. Glassdoor is unsupported (no Israel domain; it aborts the batch).
+  # 2026-07-20 from a residential IP: the boards returned real, on-topic Israeli
+  # postings. LinkedIn and Google-for-Jobs block datacenter IPs, so these are
+  # `ci: false` — run them locally. Glassdoor is unsupported (no Israel domain; it
+  # aborts the batch).
+  #
+  # `google` here is Google *for Jobs* (an aggregator over many boards), not
+  # Google-the-employer (that's the `google` company entry above). Its scraper wants
+  # a natural-language query, so each sweep carries a `google_search_term`.
   #
   # One entry per search term: these are keyword searches, not full board dumps,
   # so each role you care about needs its own sweep.
-  - name: LinkedIn/Indeed — verification
+  - name: LinkedIn/Indeed/Google — verification
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: verification engineer
+    google_search_term: verification engineer jobs in Israel
     location: Israel
     country: israel
     results: 50
     hours_old: 336
 
-  - name: LinkedIn/Indeed — chip design
+  - name: LinkedIn/Indeed/Google — chip design
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: ASIC RTL design engineer
+    google_search_term: ASIC RTL chip design engineer jobs in Israel
     location: Israel
     country: israel
     results: 50
     hours_old: 336
 
-  - name: LinkedIn/Indeed — linux
+  - name: LinkedIn/Indeed/Google — linux
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: linux embedded developer
+    google_search_term: linux embedded developer jobs in Israel
     location: Israel
     country: israel
     results: 50
     hours_old: 336
 
-  - name: LinkedIn/Indeed — RF
+  - name: LinkedIn/Indeed/Google — RF
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: RF engineer
+    google_search_term: RF engineer jobs in Israel
     location: Israel
     country: israel
     results: 50
     hours_old: 336
 
-  - name: LinkedIn/Indeed — DSP / signal processing
+  - name: LinkedIn/Indeed/Google — DSP / signal processing
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: DSP signal processing engineer
+    google_search_term: DSP signal processing engineer jobs in Israel
     location: Israel
     country: israel
     results: 50
     hours_old: 336
 
-  - name: LinkedIn/Indeed — FPGA
+  - name: LinkedIn/Indeed/Google — FPGA
     type: jobspy
     ci: false
-    sites: [indeed, linkedin]
+    sites: [indeed, linkedin, google]
     search_term: FPGA engineer
+    google_search_term: FPGA engineer jobs in Israel
     location: Israel
     country: israel
     results: 50

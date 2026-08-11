@@ -275,23 +275,27 @@ returns Hebrew (`תל אביב -יפו, TA, IL`) and the ATS APIs return English
 
 ---
 
-## LinkedIn and Indeed
+## LinkedIn, Indeed and Google for Jobs
 
 Installed by default with `requirements.txt`. These sweeps are what cover the companies
 with no reachable ATS — Qualcomm, Google, AMD, Synopsys, Apple. Nothing else in the tool
 can see those postings.
 
 The `jobspy` entries in `config/companies.yaml` are keyword *searches*, not board dumps:
-LinkedIn and Indeed have no "list everything at this company" endpoint, so each role you
-care about needs its own entry with its own `search_term`. Verified working for Israel on
-2026-07-20.
+these boards have no "list everything at this company" endpoint, so each role you care
+about needs its own entry with its own `search_term`. Each sweep hits three sites —
+`[indeed, linkedin, google]`. Verified working for Israel on 2026-07-20.
 
-Three things to know:
+Four things to know:
 
-- **They're `ci: false` on purpose.** LinkedIn blocks datacenter IPs. These work from your
-  home connection and will likely return nothing from GitHub Actions. That's also why CI
-  installs `requirements-core.txt` — no point pulling 120 MB of pandas into a run that
-  can't use it.
+- **They're `ci: false` on purpose.** LinkedIn and Google-for-Jobs block datacenter IPs.
+  These work from your home connection and will likely return nothing from GitHub Actions.
+  That's also why CI installs `requirements-core.txt` — no point pulling 120 MB of pandas
+  into a run that can't use it.
+- **`google` is Google *for Jobs*, not the employer.** It's the aggregator that pulls from
+  many boards (the employer Google is the separate `google` source). Its scraper wants a
+  natural-language query, so each sweep also carries a `google_search_term` ("<role> jobs
+  in Israel"); it falls back to `search_term`, but the phrased query returns far more.
 - **Glassdoor is unsupported.** jobspy has no Glassdoor domain for Israel and *raises*
   rather than skipping, which would take out the whole batch. The adapter rejects it.
 - **[python-jobspy](https://github.com/speedyapply/JobSpy) is effectively unmaintained**

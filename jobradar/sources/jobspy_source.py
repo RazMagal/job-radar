@@ -1,13 +1,18 @@
-"""LinkedIn / Indeed coverage via the `python-jobspy` package.
+"""LinkedIn / Indeed / Google-for-Jobs coverage via the `python-jobspy` package.
 
 This is the only way to see postings from companies with no reachable ATS — Qualcomm,
 Google, AMD, Synopsys, Apple — so it's installed by default. Three caveats:
   * pulls ~120 MB of pandas/numpy, so CI installs requirements-core.txt instead,
   * the package is effectively unmaintained (last publish mid-2025), so it will
     break without warning,
-  * LinkedIn is aggressive about datacenter IPs — verified working from a
-    residential connection, expect it to return nothing from GitHub Actions.
+  * LinkedIn (and Google-for-Jobs) are aggressive about datacenter IPs — verified
+    working from a residential connection, expect nothing from GitHub Actions.
     Hence `ci: false` on these entries.
+
+Google here is Google *for Jobs* (the aggregator that pulls from many boards), not
+Google-the-employer — that's the separate `google` source. Its scraper wants a
+natural-language query, so give those entries a `google_search_term` ("<role> jobs
+in Israel"); it falls back to `search_term`, but the phrased query returns far more.
 
 Glassdoor is deliberately not supported: jobspy has no Glassdoor domain for Israel
 and raises rather than skipping, which would take the whole run down with it.
@@ -20,7 +25,7 @@ from datetime import date, timedelta
 from ..models import Job
 from .base import SourceError, register
 
-SUPPORTED = {"linkedin", "indeed"}
+SUPPORTED = {"linkedin", "indeed", "google"}
 
 
 def _iso(value) -> str:
@@ -64,6 +69,9 @@ def fetch(cfg: dict, deep: bool = False) -> list[Job]:
             df = scrape_jobs(
                 site_name=[site],
                 search_term=cfg.get("search_term", "verification engineer"),
+                # Only the google site uses this; jobspy ignores it for the others. Without
+                # it, Google-for-Jobs returns little, so the sweeps set it explicitly.
+                google_search_term=cfg.get("google_search_term"),
                 location=cfg.get("location", "Israel"),
                 country_indeed=cfg.get("country", "israel"),
                 results_wanted=int(cfg.get("results", 50)),
