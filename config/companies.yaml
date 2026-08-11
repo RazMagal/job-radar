@@ -174,11 +174,12 @@ companies:
     uid: "F6.003"
     token: "6F329B2DE6379829B229B2037983E8B3E8B"
 
-  # More Tel Aviv startups are on Comeet too but proxy it server-side (WP/AJAX), so the
-  # uid+token aren't exposed client-side to harvest by curl: Weka, Foretellix, Vtool,
-  # Lightbits. NeoLogic/AI21/Classiq render careers entirely in JS with no static careers
-  # URL. Each needs a one-off browser capture (watch the comeet.co/jobs/<uid> request) to
-  # wire up — revisit if you want them.
+  # More Tel Aviv startups host on a real ATS but PROXY it server-side, so there's no
+  # client-exposed board API to harvest: Foretellix/Vtool/Lightbits (Comeet via WP), Weka
+  # (Greenhouse, server-rendered). NeoLogic/AI21/Classiq render careers entirely in JS.
+  # Rather than a fragile per-site scraper, they're covered by the company-targeted
+  # Google-for-Jobs sweeps at the bottom of this file (Google has indexed their postings).
+  # Upgrade any to a proper board later via a one-off browser capture if you want it.
 
   # Hailo's Comeet board is live but currently only a placeholder ("amazing openings!").
   # Flip enabled: true once it lists real reqs.
@@ -402,4 +403,89 @@ companies:
     location: Israel
     country: israel
     results: 50
+    hours_old: 336
+
+  # ---- Company-targeted sweeps (startups with no harvestable board) ----------
+  # These Tel Aviv startups host on Comeet/Greenhouse but PROXY it server-side (no
+  # client-exposed uid/token) or render careers entirely in JS, so we can't hit a clean
+  # board API. The fix that still reaches them: Google-for-Jobs has already INDEXED their
+  # Comeet/Greenhouse postings, so a "<company> jobs in Israel" query pulls them in — with
+  # structured location, so only the Israel roles pass the filter. Same `ci: false` +
+  # residential-IP caveat as the role sweeps. `search_term` is the company name; the role
+  # profiles then keep only the verification/chip/RF/DSP/linux/AI titles.
+  - name: Weka (via search)          # AI-data-infra / storage — Linux, embedded, kernel
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Weka
+    google_search_term: Weka jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: Foretellix (via search)    # ADAS/AV verification — verification, C++, simulation
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Foretellix
+    google_search_term: Foretellix jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: Vtool (via search)         # chip debug/verification tools — verification, FPGA
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Vtool
+    google_search_term: Vtool verification jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: Lightbits (via search)     # NVMe/TCP storage — Linux, kernel, embedded
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Lightbits
+    google_search_term: Lightbits Labs jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: NeoLogic (via search)      # CPU/chip startup — chip design, verification, RTL
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: NeoLogic
+    google_search_term: NeoLogic VLSI jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: AI21 Labs (via search)     # LLM research lab — ML/AI research, research engineer
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: AI21 Labs
+    google_search_term: AI21 Labs jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: Classiq (via search)       # quantum computing software — algorithms, research
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Classiq
+    google_search_term: Classiq quantum jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
     hours_old: 336

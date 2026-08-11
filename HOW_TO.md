@@ -302,6 +302,12 @@ Four things to know:
   (last publish mid-2025). It will break eventually. The adapter calls each site
   separately and treats an empty result as a failure, so when it rots you'll see it in
   `check` rather than silently getting fewer jobs.
+- **Company-targeted sweeps** (the `<company> (via search)` entries) are the fallback for
+  startups whose careers site proxies its ATS server-side or renders in JS, so there's no
+  board API to hit. Google-for-Jobs has already indexed those postings, so `search_term:
+  <company>` + `google_search_term: <company> jobs in Israel` reaches them — with proper
+  location data, so only the Israel roles pass. To wire one up as a real board instead, do
+  a one-off browser capture of its careers page and add it under the right ATS type.
 
 ---
 
