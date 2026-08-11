@@ -111,6 +111,7 @@ profiles:
       - rtl design
       - asic design
       - asic engineer
+      - chip design          # also catches "Chip Designer", "Analog Chip Designer"
       - digital design
       - logic design
       - physical design
@@ -188,6 +189,7 @@ profiles:
     match_any:
       - linux
       - embedded software
+      - embedded sw           # "Embedded SW Engineer"
       - embedded engineer
       - kernel
       - device driver

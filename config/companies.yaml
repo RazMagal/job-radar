@@ -159,6 +159,27 @@ companies:
     uid: "C3.00F"
     token: "3CF130BF3C0B6D16DA1AA9B6D130B16DA"
 
+  - name: Arbe Robotics        # imaging-radar chips (Tel Aviv) — chip test, DSP, embedded SW, HW, algorithms
+    type: comeet
+    uid: "C6.001"
+    token: "6C12886D821B0414432886144328862F472F47"
+
+  - name: TriEye              # SWIR sensing chips (Tel Aviv) — analog chip design, EO/physics, NPI
+    type: comeet
+    uid: "A6.00E"
+    token: "6AE2814D5CD5C1AB8140A35706AE2EC22814"
+
+  - name: Wiliot              # battery-free IoT chips (Tel Aviv/Caesarea) — logic DV, firmware, RF integration
+    type: comeet
+    uid: "F6.003"
+    token: "6F329B2DE6379829B229B2037983E8B3E8B"
+
+  # More Tel Aviv startups are on Comeet too but proxy it server-side (WP/AJAX), so the
+  # uid+token aren't exposed client-side to harvest by curl: Weka, Foretellix, Vtool,
+  # Lightbits. NeoLogic/AI21/Classiq render careers entirely in JS with no static careers
+  # URL. Each needs a one-off browser capture (watch the comeet.co/jobs/<uid> request) to
+  # wire up — revisit if you want them.
+
   # Hailo's Comeet board is live but currently only a placeholder ("amazing openings!").
   # Flip enabled: true once it lists real reqs.
   - name: Hailo
