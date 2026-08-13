@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 
 _WS = re.compile(r"\s+")
 _PUNCT = re.compile(r"[^\w\s]")
+_URL_HOST = re.compile(r"^https?://[^/]*")
 
 
 def normalize(text: str) -> str:
@@ -41,10 +42,18 @@ class Job:
 
     @property
     def id(self) -> str:
-        """Stable fingerprint. Deliberately excludes the URL and the ATS's own job id,
-        which churn when a posting is edited or re-opened — that would resurface jobs
-        you already applied to."""
-        key = f"{normalize(self.company)}|{normalize(self.title)}|{normalize(self.location)}"
+        """Stable fingerprint: company|title|location plus the URL *path*, which carries
+        the ATS's req id. Without it, several genuinely distinct reqs with the same title
+        in the same city hash identically and dedup silently keeps only one (~13% of
+        matched jobs, measured). The host is dropped (an ATS region swap shouldn't churn
+        ids) and so is the query string (tracking params). The cost: a board that
+        re-posts the same req under a fresh id resurfaces it as new — rarer and visible,
+        unlike the silent loss."""
+        path = _URL_HOST.sub("", (self.url or "").split("?", 1)[0]).rstrip("/")
+        key = (
+            f"{normalize(self.company)}|{normalize(self.title)}|"
+            f"{normalize(self.location)}|{normalize(path)}"
+        )
         return hashlib.sha1(key.encode("utf-8")).hexdigest()[:12]
 
     def to_dict(self) -> dict:

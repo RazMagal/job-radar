@@ -62,6 +62,13 @@ Copy, and paste into a terminal to persist them to your local log.
 Marking a job applied dims it on the page (browser-side) and records it in
 `data/applied.json` once you run the command.
 
+> **One-time note (2026-08-14):** job ids changed format — the fingerprint now includes
+> the URL path, because the old company|title|location one collapsed distinct same-title
+> reqs and silently dropped ~13% of matches. Entries in `data/applied.json` keep their
+> old ids (the log is still readable and `applied`/`unapplied` still resolve them), but
+> the page's browser-side "new"/"applied" marks reset once: everything shows as new on
+> your next visit, and jobs you'd marked applied on the page need re-marking.
+
 ---
 
 ## Which CV to send (`--deep`)
