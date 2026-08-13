@@ -201,7 +201,8 @@ profiles:
       - מוטמע                # (Hebrew) embedded
       - משובץ                # (Hebrew) embedded (alt. spelling)
     boost:
-      - c++
+      # NOT c++: matching is substring-on-normalized-text, and normalize("c++") is
+      # just "c" — which boosts nearly every title into this profile.
       - rust
       - kernel
       - low level

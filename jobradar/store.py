@@ -47,16 +47,19 @@ class Store:
         return job_id in self.applied
 
     def mark_applied(self, job_id: str, meta: dict, note: str = "", cv: str = "") -> dict:
+        # Re-marking must not lose what's already recorded: keep the original
+        # applied_on, and only overwrite cv/note when new values are actually given.
+        prev = self.applied.get(job_id) or {}
         entry = {
-            "applied_on": date.today().isoformat(),
-            "company": meta.get("company", ""),
-            "title": meta.get("title", ""),
-            "url": meta.get("url", ""),
+            "applied_on": prev.get("applied_on") or date.today().isoformat(),
+            "company": meta.get("company") or prev.get("company", ""),
+            "title": meta.get("title") or prev.get("title", ""),
+            "url": meta.get("url") or prev.get("url", ""),
         }
-        if cv:
-            entry["cv"] = cv  # which CV you sent — the point of the whole feature later
-        if note:
-            entry["note"] = note
+        if cv or prev.get("cv"):
+            entry["cv"] = cv or prev["cv"]  # which CV you sent — the point of the feature
+        if note or prev.get("note"):
+            entry["note"] = note or prev["note"]
         self.applied[job_id] = entry
         self._write_applied()
         return entry

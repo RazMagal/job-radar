@@ -148,5 +148,9 @@ def match_all(
     jobs, settings: Settings, profiles: list[Profile], use_description: bool = False
 ) -> list[Job]:
     out = [m for j in jobs if (m := score(j, settings, profiles, use_description))]
-    out.sort(key=lambda j: (-j.score, j.posted_at and -int(j.posted_at.replace("-", "")) or 0))
+    # Two stable passes: newest first within a score, highest score first overall.
+    # ISO dates sort correctly as strings — and a source that one day emits a
+    # non-ISO date must not crash the whole scan over a sort key.
+    out.sort(key=lambda j: j.posted_at or "", reverse=True)
+    out.sort(key=lambda j: j.score, reverse=True)
     return out
