@@ -57,7 +57,7 @@ def fetch(cfg: dict, deep: bool = False) -> list[Job]:
         )
 
     hours_old = int(cfg.get("hours_old", 24 * 14))
-    cutoff = (date.today() - timedelta(hours=hours_old / 24 if hours_old else 0)).isoformat()
+    cutoff = (date.today() - timedelta(hours=hours_old or 0)).isoformat()
 
     jobs: list[Job] = []
     failures: list[str] = []
