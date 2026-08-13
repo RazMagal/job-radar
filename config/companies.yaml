@@ -9,6 +9,7 @@
 #   lever            jobs.lever.co/<board>               -> board: <board>
 #   ashby            jobs.ashbyhq.com/<board>            -> board: <board>
 #   smartrecruiters  jobs.smartrecruiters.com/<company>  -> board: <company>
+#   bamboohr         <sub>.bamboohr.com/careers          -> board: <sub>
 #   workday          <tenant>.<wd>.myworkdayjobs.com/<site>
 #                    e.g. nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite
 #                    -> tenant: nvidia   wd: wd5   site: NVIDIAExternalCareerSite
@@ -277,6 +278,21 @@ companies:
     type: rafael
     ci: false
 
+  # ---- Space / satellite ------------------------------------------------------
+  # Gilat (Petah Tikva) hosts on Comeet like the chip scene — uid/token harvested live
+  # from comeet.com/jobs/gilat/39.005. The board mixes Israel HQ roles with its Peru /
+  # Brazil / US (Wavestream) subsidiaries; the location filter keeps the Israel ones.
+  - name: Gilat                # satellite comms — RF, modem, DSP, FPGA, embedded (Petah Tikva)
+    type: comeet
+    uid: "39.005"
+    token: "935373E52DD52DD126A373E49A8935373E935"
+
+  # Ramon.Space (space-resilient processors, Yokneam), hiSky (satellite IoT terminals),
+  # NSLComm (satellite antennas) and ImageSat/ISI (EO imagery) all render careers from
+  # WordPress server-side (admin-ajax) — no harvestable board API. Covered by the
+  # company-targeted Google-for-Jobs sweeps at the bottom of this file, same as the
+  # unharvestable Tel Aviv startups.
+
   # ---- Wired up but currently empty/thin (ready for when they post IL roles) --
   # Added so a future scan picks them up automatically. All verified live: the adapter
   # resolves; there just aren't (m)any Israel roles right now. `check` will show these
@@ -284,6 +300,14 @@ companies:
   - name: Vayyar               # radar chips (Yehud) — Workable board, currently empty
     type: workable
     board: vayyar
+
+  # Astroscale (on-orbit servicing; Israel R&D in Tel Aviv, ex-Effective Space) runs one
+  # global BambooHR board. ~47 reqs today, all Tokyo/UK/France — the Israel location
+  # filter keeps 0 until the Tel Aviv office posts again, at which point they surface
+  # automatically. `check` will show the raw global count; that's expected.
+  - name: Astroscale           # on-orbit servicing — GNC, avionics, embedded (Tel Aviv R&D)
+    type: bamboohr
+    board: astroscale
 
   # AMD has no country filter, so its adapter pages the whole board (~1000 jobs) and keeps
   # country_code == IL — heavy, and 0 IL today, so ci:false (run it locally on demand).
@@ -485,6 +509,63 @@ companies:
     sites: [indeed, linkedin, google]
     search_term: Classiq
     google_search_term: Classiq quantum jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  # Caesarea Business Park chip scene (Wiliot and NeuReality above are also Caesarea):
+  - name: ColorChip (via search)     # photonic ICs / optical sub-systems (Caesarea) — analog, ASIC, optics
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: ColorChip
+    google_search_term: ColorChip jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  # Space startups with WordPress-proxied careers pages (see the space section above):
+  - name: Ramon.Space (via search)   # space-resilient AI/DSP processors (Yokneam) — chip, DSP, embedded, FPGA
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: Ramon.Space
+    google_search_term: Ramon Space jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: hiSky (via search)         # satellite IoT comms terminals — RF, modem, embedded
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: hiSky
+    google_search_term: hiSky satellite jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: NSLComm (via search)       # expandable satellite antennas — RF, antennas, embedded
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: NSLComm
+    google_search_term: NSLComm jobs in Israel
+    location: Israel
+    country: israel
+    results: 25
+    hours_old: 336
+
+  - name: ImageSat (via search)      # EO satellite imagery (ISI, Or Yehuda) — algorithms, image processing
+    type: jobspy
+    ci: false
+    sites: [indeed, linkedin, google]
+    search_term: ImageSat
+    google_search_term: ImageSat International jobs in Israel
     location: Israel
     country: israel
     results: 25

@@ -10,7 +10,7 @@ roles under a pile of unrelated engineering titles.
 ## How it works
 
 1. **Fetch** — hits each company's ATS API directly (Greenhouse, Lever, Ashby,
-   SmartRecruiters, Workday, Comeet) rather than scraping careers pages. That's where the
+   SmartRecruiters, Workday, Comeet, BambooHR) rather than scraping careers pages. That's where the
    postings actually live, it returns clean JSON, and it doesn't break every time
    someone reskins a website. Comeet in particular is where most of the Israeli chip
    scene hosts (Nuvoton, Ceva, NextSilicon, Quantum Machines, proteanTecs, …). Several
