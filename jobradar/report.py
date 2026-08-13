@@ -16,8 +16,15 @@ def render_html(jobs: list[dict], meta: dict) -> str:
     for token, value in (("__JOBS_JSON__", jobs), ("__META_JSON__", meta)):
         if token not in html:
             raise RuntimeError(f"{TEMPLATE} is missing the {token} placeholder")
-        # </script> inside JSON data would close the tag early and break the page.
-        payload = json.dumps(value, ensure_ascii=False).replace("</", "<\\/")
+        # Titles come from third-party boards: escape every "<" so neither "</script>"
+        # nor the "<!--<script" double-escaped-state trick can break out of the inline
+        # block. U+2028/9 are legal in JSON strings but terminate a JS line.
+        payload = (
+            json.dumps(value, ensure_ascii=False)
+            .replace("<", "\\u003c")
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029")
+        )
         html = html.replace(token, payload)
     return html
 
