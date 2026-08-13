@@ -24,7 +24,7 @@ ENDPOINT = "https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/job
 DETAIL = "https://{tenant}.{wd}.myworkdayjobs.com/wday/cxs/{tenant}/{site}{path}"
 VIEW = "https://{tenant}.{wd}.myworkdayjobs.com/en-US/{site}{path}"
 PAGE = 20
-MAX_PAGES = 25
+MAX_PAGES = 60  # ADI unfiltered is ~940 postings; hitting the cap raises, never truncates
 
 _DAYS = re.compile(r"(\d+)\+?\s*days?", re.I)
 
@@ -99,6 +99,14 @@ def fetch(cfg: dict, deep: bool = False) -> list[Job]:
         offset += PAGE
         if offset >= payload.get("total", 0):
             break
+    else:
+        # Exhausting MAX_PAGES with jobs still unfetched must be loud: a silent
+        # partial board looks exactly like a complete one.
+        raise SourceError(
+            f"workday {tenant}/{site}: board exceeds {MAX_PAGES * PAGE} postings "
+            f"(got {len(jobs)} of {payload.get('total', '?')}) — raise MAX_PAGES or "
+            "add a search_text/facet filter"
+        )
 
     return jobs
 

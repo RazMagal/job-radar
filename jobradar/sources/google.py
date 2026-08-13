@@ -90,6 +90,7 @@ def fetch(cfg: dict, deep: bool = False) -> list[Job]:
             total = payload[2]
         if not rows:
             break
+        bad_rows = 0
         for j in rows:
             try:
                 locs = j[9] or []
@@ -105,7 +106,21 @@ def fetch(cfg: dict, deep: bool = False) -> list[Job]:
                     job.description = html_to_text(j[10][1] or "")
                 jobs.append(job)
             except (IndexError, TypeError):
+                bad_rows += 1
                 continue  # one malformed row must not sink the page
+        # ...but ALL rows failing means the positional row shape changed — say so
+        # loudly instead of returning an empty board that reads as "no jobs".
+        if rows and bad_rows == len(rows):
+            raise SourceError(
+                f"google: all {bad_rows} rows in a page failed to parse — the RPC "
+                "row shape likely changed on a Google deploy"
+            )
         if total is not None and len(jobs) >= total:
             break
+
+    if not jobs and (total or 0) > 0:
+        raise SourceError(
+            f"google: the RPC reports {total} jobs but none could be read — the "
+            "payload shape likely changed on a Google deploy"
+        )
     return jobs

@@ -31,6 +31,9 @@
 #   401 = internal-only board; skip it
 #
 # `enabled: false` parks an entry. `ci: false` skips it in GitHub Actions.
+# `expect_min: N` fails the board when it returns fewer postings — set it on boards that
+# are never legitimately thin (IAI, Elbit, Amazon...), where "0 jobs" otherwise looks
+# identical to a silently rotted parser or a WAF block.
 
 companies:
   # ---- Chip / silicon -------------------------------------------------------
@@ -223,6 +226,7 @@ companies:
     type: amazon
     location: Israel
     country: ISR
+    expect_min: 50             # ~145 IL reqs on a normal day
 
   # Qualcomm and Microsoft both run Eightfold's public "PCSX" search API (same shape,
   # different host+domain — see jobradar/sources/eightfold.py).
@@ -259,6 +263,7 @@ companies:
   # No token, no auth; the detail page is /job/?jid={jobId}.
   - name: Elbit Systems        # radar/EW/C4I/avionics — RF, DSP, FPGA, HW verification (Netanya/Haifa/Holon/Ra'anana)
     type: elbit
+    expect_min: 300            # ~650 open reqs on a normal day
 
   # IAI's careers site (jobs.iai.co.il) is WordPress behind a Reblaze WAF, but the WAF
   # only challenges the page nav — NOT the static jobs feed it loads. So a plain GET of
@@ -268,6 +273,7 @@ companies:
   # subsidiary) posts into this same feed.
   - name: IAI                  # Israel Aerospace Industries (+ Elta) — RF, FPGA, DSP, אימות, מכ"ם
     type: iai
+    expect_min: 200            # ~500 reqs on a normal day; a WAF block otherwise looks empty
 
   # Rafael's /api/jobs (~320 reqs) IS behind the Reblaze wall, so this one board drives a
   # real browser (Playwright + system Chrome) to pass the challenge — hence `ci: false` and
@@ -277,6 +283,7 @@ companies:
   - name: Rafael               # Rafael Advanced Defense Systems — FPGA/ASIC, RFIC, וריפיקציה, אלגוריתמים (Haifa)
     type: rafael
     ci: false
+    expect_min: 150            # ~320 reqs on a normal day
 
   # ---- Space / satellite ------------------------------------------------------
   # Gilat (Petah Tikva) hosts on Comeet like the chip scene — uid/token harvested live

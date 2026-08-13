@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as cf
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -55,6 +56,25 @@ def load_companies(path: Path, ci: bool = False) -> list[dict]:
     return entries
 
 
+def fetch_board(cfg: dict, deep: bool = False) -> list[Job]:
+    """Fetch one board. `expect_min: N` in companies.yaml turns a suspiciously thin
+    result into an error — for boards that are never legitimately (near-)empty, a
+    silently rotted parser is otherwise indistinguishable from a quiet week."""
+    jobs = list(sources.get(cfg["type"])(cfg, deep=deep))
+    floor = int(cfg.get("expect_min") or 0)
+    if floor and len(jobs) < floor:
+        raise sources.SourceError(
+            f"{cfg['name']}: only {len(jobs)} posting(s), expected at least {floor} — "
+            "the board may be blocked or the adapter silently broken"
+        )
+    return jobs
+
+
+# requests embeds the full URL in HTTPError text; strip query strings so a token in a
+# URL can never ride an error message onto the published page or the CI summary.
+_URL_QUERY = re.compile(r"(https?://[^\s?]+)\?\S*")
+
+
 def fetch_all(
     companies: list[dict], workers: int = 8, deep: bool = False
 ) -> tuple[list[Job], list[dict]]:
@@ -62,17 +82,16 @@ def fetch_all(
     jobs: list[Job] = []
     errors: list[dict] = []
 
-    def run(cfg: dict) -> list[Job]:
-        return list(sources.get(cfg["type"])(cfg, deep=deep))
-
     with cf.ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(run, c): c for c in companies}
+        futures = {pool.submit(fetch_board, c, deep): c for c in companies}
         for fut in cf.as_completed(futures):
             cfg = futures[fut]
             try:
                 jobs.extend(fut.result())
             except Exception as exc:
-                errors.append({"company": cfg["name"], "error": str(exc)})
+                errors.append(
+                    {"company": cfg["name"], "error": _URL_QUERY.sub(r"\1", str(exc))}
+                )
 
     return jobs, errors
 
@@ -83,8 +102,9 @@ def fetch_all(
 def _fill_descriptions(jobs: list[Job], companies: list[dict], workers: int = 8) -> int:
     """Fetch descriptions for matched jobs whose list endpoint couldn't supply one.
 
-    Only workday needs this today, and only for jobs that already matched — a per-job
-    GET across a whole board would be thousands of requests.
+    workday, qualcomm/microsoft (eightfold) and bamboohr register describers, and they
+    run only for jobs that already matched — a per-job GET across a whole board would
+    be thousands of requests.
     """
     cfg_by_name = {c["name"]: c for c in companies}
     todo = []
@@ -206,10 +226,15 @@ def cmd_scan(args) -> int:
     data_dir = Path(args.data)
     data_dir.mkdir(parents=True, exist_ok=True)
     # latest.json is the local catalog `applied <id>` resolves metadata from; gitignored.
-    (data_dir / "latest.json").write_text(
+    # Written tmp+replace like applied.json: an interrupted scan must not leave truncated
+    # JSON that then kills every `applied`/`log` invocation.
+    latest = data_dir / "latest.json"
+    tmp = latest.with_suffix(".json.tmp")
+    tmp.write_text(
         json.dumps({"meta": meta, "jobs": payload}, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+    tmp.replace(latest)
 
     for err in errors:
         print(f"  {r}FAIL{reset} {err['company']}: {err['error']}", file=sys.stderr)
@@ -233,8 +258,17 @@ def cmd_scan(args) -> int:
             if j.cv_reason:
                 print(f"       {dim}why: {j.cv_reason}{reset}")
 
-    # Every board failing means something systemic (network, blocked IP) — fail the run.
-    return 1 if errors and len(errors) == len(companies) else 0
+    # A large share of boards failing means something systemic (network trouble, a
+    # blocked IP, an ATS outage wave). Fail the run so CI skips the deploy and the
+    # previous — complete — page survives, instead of being overwritten by a stub.
+    if errors and len(errors) * 2 >= len(companies):
+        print(
+            f"{r}not publishing: {len(errors)}/{len(companies)} boards failed — "
+            f"keeping the previous page{reset}",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
 
 
 # -------------------------------------------------------------------------- check
@@ -247,7 +281,7 @@ def cmd_check(args) -> int:
     print(f"Checking {len(companies)} board(s)...\n")
     failures = 0
     with cf.ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(lambda c: list(sources.get(c["type"])(c)), c): c for c in companies}
+        futures = {pool.submit(fetch_board, c): c for c in companies}
         for fut in cf.as_completed(futures):
             cfg = futures[fut]
             label = f"{cfg['name']} ({cfg['type']})"
