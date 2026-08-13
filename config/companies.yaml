@@ -280,6 +280,13 @@ companies:
   # the optional playwright dep (see requirements.txt). Title-only, Hebrew. If Playwright
   # isn't installed it fails loudly for just this board; everything else keeps working.
   # Set `browser_channel: chromium` to use a Playwright-managed browser instead of Chrome.
+  #
+  # KNOWN BROKEN since ~2026-08-14: Reblaze tightened (same week it started blocking IAI
+  # in CI) and now detects the automation protocol itself — the challenge stub loads its
+  # detection lib and never proceeds, headless AND headed, even from a residential IP,
+  # with AutomationControlled disabled. Google-for-Jobs indexes nothing from the walled
+  # site either, so there's no sweep fallback. Left enabled so the failure stays loud;
+  # check jobs manually at career.rafael.co.il until their WAF posture changes.
   - name: Rafael               # Rafael Advanced Defense Systems — FPGA/ASIC, RFIC, וריפיקציה, אלגוריתמים (Haifa)
     type: rafael
     ci: false
