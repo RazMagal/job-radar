@@ -9,7 +9,9 @@ really chip design or verification.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import yaml
 
@@ -19,6 +21,38 @@ TITLE_HIT = 3  # a primary keyword in the title
 BOOST_HIT = 1  # a supporting keyword ("uvm", "asic", ...)
 DESC_HIT = 2  # a primary keyword found in the body but not the title (--deep only)
 DESC_MIN_HITS = 2  # ...and the body must carry at least this many distinct ones to count
+
+
+# Keyword matching is not plain substring. Inclusion keywords anchor at a word START
+# only — "soc" can't hit "as-soc-iate" and "asic" can't hit "basic", while "rf" still
+# hits "RFIC" and "soc" still hits "soc validation". Exclusion keywords anchor on BOTH
+# sides: they delete jobs, so they must be exact words/phrases — "intern" must not
+# swallow "International" (variants like "internship" are listed explicitly in
+# roles.yaml). Hebrew keywords keep plain substring matching: the prepositions ו/ב/ל
+# glue onto the front of the word, so a left anchor would miss "ואימות".
+
+
+@lru_cache(maxsize=None)
+def _include_pat(kw: str) -> re.Pattern | None:
+    return re.compile(r"\b" + re.escape(kw)) if kw.isascii() else None
+
+
+@lru_cache(maxsize=None)
+def _exclude_pat(kw: str) -> re.Pattern | None:
+    return re.compile(r"\b" + re.escape(kw) + r"\b") if kw.isascii() else None
+
+
+def _hit(kw: str, text: str) -> bool:
+    pat = _include_pat(kw)
+    return pat.search(text) is not None if pat else kw in text
+
+
+def _excluded(text: str, keywords: list[str]) -> bool:
+    for kw in keywords:
+        pat = _exclude_pat(kw)
+        if pat.search(text) is not None if pat else kw in text:
+            return True
+    return False
 
 
 def _distinct(keywords: list[str]) -> list[str]:
@@ -98,7 +132,7 @@ def score(
     """
     title = normalize(job.title)
 
-    if any(bad in title for bad in settings.exclude_titles):
+    if _excluded(title, settings.exclude_titles):
         return None
     if not _location_ok(job, settings):
         return None
@@ -106,12 +140,12 @@ def score(
     # --- pass 1: title only (the whole story for a plain scan) ---------------------
     best: tuple[int, list[str], Profile] | None = None
     for prof in profiles:
-        if any(bad in title for bad in prof.exclude):
+        if _excluded(title, prof.exclude):
             continue
-        hits = [kw for kw in prof.match_any if kw in title]
+        hits = [kw for kw in prof.match_any if _hit(kw, title)]
         if not hits:
             continue
-        boosts = [kw for kw in prof.boost if kw in title]
+        boosts = [kw for kw in prof.boost if _hit(kw, title)]
         total = len(hits) * TITLE_HIT + len(boosts) * BOOST_HIT
         if best is None or total > best[0]:
             best = (total, hits + boosts, prof)
@@ -126,13 +160,13 @@ def score(
     desc = normalize(job.description)
     best = None
     for prof in profiles:
-        if any(bad in title for bad in prof.exclude) or any(bad in desc for bad in prof.exclude):
+        if _excluded(title, prof.exclude) or _excluded(desc, prof.exclude):
             continue
-        title_hits = [kw for kw in prof.match_any if kw in title]
-        body = _distinct([kw for kw in prof.match_any if kw in desc and kw not in title_hits])
+        title_hits = [kw for kw in prof.match_any if _hit(kw, title)]
+        body = _distinct([kw for kw in prof.match_any if _hit(kw, desc) and kw not in title_hits])
         if len(body) < DESC_MIN_HITS:
             continue
-        boosts = [kw for kw in prof.boost if kw in title]
+        boosts = [kw for kw in prof.boost if _hit(kw, title)]
         total = len(title_hits) * TITLE_HIT + len(boosts) * BOOST_HIT + len(body) * DESC_HIT
         matched = title_hits + boosts + [f"~{kw}" for kw in body]
         if best is None or total > best[0]:
