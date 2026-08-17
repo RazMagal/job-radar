@@ -389,10 +389,13 @@ const META = __META_JSON__;
       j.source ? "<span>" + esc(j.source) + "</span>" : ""
     ].filter(Boolean).join("");
     var on = isApplied(j);
+    // The URL is third-party board data: only http(s) may become a link, so a hostile
+    // javascript:/data: URL can never execute — esc() alone doesn't police the scheme.
+    var href = /^https?:\/\//i.test(String(j.url || "")) ? j.url : "#";
     return '<article class="job' + (isApplied(j) ? " applied" : "") + '" data-id="' + esc(j.id) + '">' +
       '<div class="job-main">' +
         '<h3 class="title">' + (isNew(j) ? '<span class="badge">NEW</span>' : "") +
-          '<a href="' + esc(j.url) + '" target="_blank" rel="noopener">' + esc(j.title) + "</a></h3>" +
+          '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(j.title) + "</a></h3>" +
         '<div class="meta">' + meta + "</div>" +
         (cv || tags ? '<div class="tags">' + cv + why + tags + "</div>" : "") +
       "</div>" +
