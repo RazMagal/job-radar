@@ -271,8 +271,13 @@ companies:
   # which is why roles.yaml carries Hebrew keywords (אימות/מכ"ם/עיבוד אותות/…) alongside
   # the Latin acronyms (RF/FPGA/DSP) that Israeli titles keep inline. Elta (IAI's radar/EW
   # subsidiary) posts into this same feed.
+  # ci: false since 2026-08-14 — the Reblaze WAF started serving GitHub's datacenter IPs
+  # a block page (HTTP 247) around Aug 10, so every CI scan carried an IAI error banner.
+  # Local scans (residential IP) still fetch all ~500 reqs; re-enable if their posture
+  # changes. The published page consequently carries no IAI jobs — run local scans for it.
   - name: IAI                  # Israel Aerospace Industries (+ Elta) — RF, FPGA, DSP, אימות, מכ"ם
     type: iai
+    ci: false
     expect_min: 200            # ~500 reqs on a normal day; a WAF block otherwise looks empty
 
   # Rafael's /api/jobs (~320 reqs) IS behind the Reblaze wall, so this one board drives a
