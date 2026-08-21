@@ -7,7 +7,8 @@
 #
 #   label  what shows on each matching job's card ("send: <label>")
 #   file   the file in cv/ (`cv list` warns if it's missing)
-#   roles  role ids from roles.yaml this CV covers (verification, chip-design, linux, ai)
+#   roles  role ids from roles.yaml this CV covers (verification, chip-design, rf-dsp,
+#          linux, ai)
 #
 # This mapping is the DEFAULT recommendation. `scan --deep` reads the text of the files
 # below plus each job's description and can overrule the default per job when the
@@ -25,6 +26,10 @@ cvs:
   - label: Chip Design
     file: chip-design.pdf
     roles: [chip-design]
+
+  - label: RF / DSP
+    file: rf-dsp.pdf
+    roles: [rf-dsp]
 
   - label: Linux
     file: linux.pdf
